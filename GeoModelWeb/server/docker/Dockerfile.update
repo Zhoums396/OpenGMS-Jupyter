@@ -1,0 +1,22 @@
+# 基于现有 geomodel-jupyter 镜像更新 JupyterLab 扩展
+FROM geomodel-jupyter:latest
+
+# 切换到 root 安装
+USER root
+
+# 复制新的扩展 wheel 文件
+COPY jupyterlab_geomodel-0.1.0-py3-none-any.whl /tmp/
+
+# 卸载旧版本并安装新版本
+RUN pip uninstall -y jupyterlab-geomodel && \
+    pip install --no-cache-dir /tmp/jupyterlab_geomodel-0.1.0-py3-none-any.whl && \
+    rm -f /tmp/*.whl
+
+# 切换回 jovyan 用户
+USER ${NB_UID}
+
+# 验证扩展已安装
+RUN jupyter labextension list
+
+# 设置工作目录
+WORKDIR /home/jovyan/work

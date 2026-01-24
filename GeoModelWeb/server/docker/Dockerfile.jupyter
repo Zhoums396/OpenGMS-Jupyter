@@ -1,0 +1,27 @@
+# OpenGMS Jupyter Docker Image
+# 基于官方 jupyter/scipy-notebook，预装 GeoModel 扩展和 PyGeoModel SDK
+
+FROM jupyter/scipy-notebook:latest
+
+# 切换到 root 安装
+USER root
+
+# 复制扩展 wheel 文件
+COPY jupyterlab_geomodel-0.1.0-py3-none-any.whl /tmp/
+COPY pygeomodel-1.0.4-py3-none-any.whl /tmp/
+
+# 安装扩展和 PyGeoModel SDK，以及常用地理可视化库
+RUN pip install --no-cache-dir \
+    /tmp/jupyterlab_geomodel-0.1.0-py3-none-any.whl \
+    /tmp/pygeomodel-1.0.4-py3-none-any.whl \
+    folium && \
+    rm -f /tmp/*.whl
+
+# 切换回 jovyan 用户
+USER ${NB_UID}
+
+# 验证扩展已安装
+RUN jupyter labextension list
+
+# 设置工作目录
+WORKDIR /home/jovyan/work

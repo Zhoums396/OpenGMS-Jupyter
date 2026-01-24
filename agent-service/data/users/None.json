@@ -1,0 +1,21 @@
+{
+  "profile": {
+    "user_id": null,
+    "user_name": null,
+    "expertise_level": "novice",
+    "domain_knowledge": [],
+    "preferred_language": "zh-CN",
+    "code_style": "detailed",
+    "explanation_level": "moderate",
+    "total_sessions": 0,
+    "total_interactions": 0,
+    "successful_model_runs": 0,
+    "favorite_models": [],
+    "recent_files": []
+  },
+  "current_vibe": "exploratory",
+  "vibe_confidence": 0.75,
+  "consecutive_errors": 0,
+  "last_successful_action": null,
+  "updated_at": "2026-01-14T21:32:05.568078"
+}

@@ -1,0 +1,25 @@
+# OpenGMS Jupyter Docker Image - Python 3.9 Pure
+# 基于官方 jupyter/base-notebook:python-3.9，纯净版本
+
+FROM jupyter/base-notebook:python-3.9
+
+# 切换到 root 安装
+USER root
+
+# 复制扩展 wheel 文件
+COPY jupyterlab_geomodel-0.1.0-py3-none-any.whl /tmp/
+
+# 安装 GeoModel 扩展（不安装 PyGeoModel SDK 以保持纯净）
+RUN pip install --no-cache-dir \
+    /tmp/jupyterlab_geomodel-0.1.0-py3-none-any.whl \
+    requests && \
+    rm -f /tmp/*.whl
+
+# 切换回 jovyan 用户
+USER ${NB_UID}
+
+# 验证扩展已安装
+RUN jupyter labextension list
+
+# 设置工作目录
+WORKDIR /home/jovyan/work

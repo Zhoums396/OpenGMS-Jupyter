@@ -1,0 +1,31 @@
+{
+  "user_id": "anonymous",
+  "display_name": null,
+  "domain": null,
+  "expertise_level": "unknown",
+  "gis_proficiency": "unknown",
+  "coding_proficiency": "unknown",
+  "statistics": {
+    "total_sessions": 0,
+    "total_messages": 1,
+    "total_tool_calls": 0,
+    "successful_executions": 0,
+    "failed_executions": 0,
+    "skill_usage": {},
+    "data_type_usage": {},
+    "first_seen": "2026-01-14T21:02:26.648176",
+    "last_seen": "2026-01-14T21:02:26.648176"
+  },
+  "preferences": {
+    "preferred_language": "python",
+    "code_style": "concise",
+    "auto_execute": false,
+    "show_explanations": true,
+    "confirmation_level": "normal",
+    "default_crs": "EPSG:4326",
+    "preferred_vector_format": "GeoJSON",
+    "preferred_raster_format": "GeoTIFF"
+  },
+  "created_at": "2026-01-14T21:02:26.647952",
+  "updated_at": "2026-01-14T21:02:26.648178"
+}

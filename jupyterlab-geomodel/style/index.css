@@ -1,0 +1,747 @@
+/**
+ * JupyterLab GeoModel Extension Styles
+ * Academic & Professional Design
+ */
+
+/* ========================================
+   主面板容器
+   ======================================== */
+.jp-GeoModel-sidebar {
+  background: var(--jp-layout-color1);
+  color: var(--jp-ui-font-color1);
+  overflow-y: auto;
+  min-width: 280px;
+}
+
+.geomodel-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: var(--jp-ui-font-family);
+}
+
+/* ========================================
+   头部 - 简约学术风格
+   ======================================== */
+.geomodel-header {
+  padding: 14px 16px;
+  background: var(--jp-layout-color2);
+  border-bottom: 1px solid var(--jp-border-color1);
+}
+
+.geomodel-header h2 {
+  margin: 0 0 2px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--jp-ui-font-color1);
+  letter-spacing: 0.3px;
+}
+
+.geomodel-header p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--jp-ui-font-color2);
+}
+
+/* ========================================
+   Tab 切换 - 简洁下划线风格
+   ======================================== */
+.geomodel-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--jp-border-color1);
+  background: var(--jp-layout-color1);
+}
+
+.geomodel-tabs .tab-btn {
+  flex: 1;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: var(--jp-ui-font-color2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s;
+  position: relative;
+}
+
+.geomodel-tabs .tab-btn:hover {
+  color: var(--jp-ui-font-color1);
+}
+
+.geomodel-tabs .tab-btn.active {
+  color: var(--jp-ui-font-color1);
+}
+
+.geomodel-tabs .tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: var(--jp-brand-color1);
+}
+
+/* ========================================
+   来源切换
+   ======================================== */
+.geomodel-source {
+  display: flex;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--jp-layout-color1);
+  border-bottom: 1px solid var(--jp-border-color1);
+}
+
+.geomodel-source label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--jp-ui-font-color2);
+  cursor: pointer;
+}
+
+.geomodel-source label:hover {
+  color: var(--jp-ui-font-color1);
+}
+
+.geomodel-source input[type="radio"] {
+  margin: 0;
+  accent-color: var(--jp-brand-color1);
+}
+
+/* ========================================
+   搜索框
+   ======================================== */
+.geomodel-search {
+  padding: 10px 16px;
+  background: var(--jp-layout-color1);
+  position: relative;
+}
+
+.geomodel-search input {
+  width: 100%;
+  padding: 7px 28px 7px 10px;
+  border: 1px solid var(--jp-border-color1);
+  border-radius: 3px;
+  background: var(--jp-layout-color0);
+  color: var(--jp-ui-font-color1);
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.geomodel-search input:focus {
+  outline: none;
+  border-color: var(--jp-brand-color1);
+}
+
+.geomodel-search input::placeholder {
+  color: var(--jp-ui-font-color3);
+}
+
+.geomodel-search .search-clear {
+  position: absolute;
+  right: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: var(--jp-ui-font-color3);
+  color: var(--jp-layout-color0);
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.geomodel-search .search-clear:hover {
+  opacity: 1;
+}
+
+/* ========================================
+   搜索结果信息
+   ======================================== */
+.geomodel-results-info {
+  padding: 6px 16px;
+  font-size: 11px;
+  color: var(--jp-ui-font-color2);
+  background: var(--jp-layout-color1);
+  border-bottom: 1px solid var(--jp-border-color1);
+}
+
+/* ========================================
+   分页控件
+   ======================================== */
+.geomodel-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--jp-layout-color1);
+  border-top: 1px solid var(--jp-border-color1);
+}
+
+.geomodel-pagination .page-btn {
+  padding: 5px 10px;
+  border: 1px solid var(--jp-border-color1);
+  border-radius: 3px;
+  background: var(--jp-layout-color0);
+  color: var(--jp-ui-font-color1);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.geomodel-pagination .page-btn:hover:not(:disabled) {
+  background: var(--jp-brand-color1);
+  color: white;
+  border-color: var(--jp-brand-color1);
+}
+
+.geomodel-pagination .page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.geomodel-pagination .page-info {
+  padding: 0 8px;
+  font-size: 11px;
+  color: var(--jp-ui-font-color2);
+}
+
+/* ========================================
+   加载状态
+   ======================================== */
+.geomodel-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  color: var(--jp-ui-font-color2);
+}
+
+.geomodel-loading .spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--jp-border-color1);
+  border-top-color: var(--jp-brand-color1);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.geomodel-loading p {
+  margin: 12px 0 0 0;
+  font-size: 12px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ========================================
+   空状态
+   ======================================== */
+.geomodel-empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--jp-ui-font-color2);
+  font-size: 12px;
+}
+
+/* ========================================
+   未认证警告
+   ======================================== */
+.geomodel-auth-warning {
+  margin: 10px 16px;
+  padding: 12px;
+  background: var(--jp-warn-color3);
+  border-left: 3px solid var(--jp-warn-color1);
+  font-size: 12px;
+}
+
+.geomodel-auth-warning p {
+  margin: 0 0 4px 0;
+  color: var(--jp-ui-font-color1);
+}
+
+.geomodel-auth-warning .auth-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--jp-ui-font-color2);
+}
+
+/* ========================================
+   列表 - 学术论文风格
+   ======================================== */
+.geomodel-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.geomodel-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--jp-border-color2);
+  transition: background 0.1s;
+}
+
+.geomodel-item:hover {
+  background: var(--jp-layout-color2);
+}
+
+.geomodel-item:last-child {
+  border-bottom: none;
+}
+
+.geomodel-item .item-icon {
+  font-size: 14px;
+  color: var(--jp-ui-font-color2);
+  margin-top: 2px;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+}
+
+.geomodel-item .item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.geomodel-item .item-name {
+  margin: 0 0 3px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--jp-ui-font-color1);
+  line-height: 1.3;
+}
+
+.geomodel-item .item-desc {
+  margin: 0 0 4px 0;
+  font-size: 11px;
+  color: var(--jp-ui-font-color2);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.geomodel-item .item-author {
+  font-size: 10px;
+  color: var(--jp-ui-font-color3);
+}
+
+.geomodel-item .item-arrow {
+  color: var(--jp-ui-font-color3);
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+/* ========================================
+   返回按钮
+   ======================================== */
+.geomodel-back {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--jp-border-color1);
+  background: var(--jp-layout-color2);
+}
+
+.geomodel-back button {
+  padding: 4px 10px;
+  border: 1px solid var(--jp-border-color1);
+  border-radius: 3px;
+  background: var(--jp-layout-color0);
+  color: var(--jp-ui-font-color1);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.geomodel-back button:hover {
+  background: var(--jp-layout-color1);
+}
+
+.geomodel-back .item-name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ========================================
+   参数表单
+   ======================================== */
+.geomodel-form {
+  padding: 14px 16px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.geomodel-form h3 {
+  margin: 0 0 12px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--jp-ui-font-color1);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.geomodel-form .form-notice {
+  text-align: center;
+  padding: 16px;
+  color: var(--jp-ui-font-color2);
+  font-size: 12px;
+}
+
+.geomodel-form .form-group {
+  margin-bottom: 14px;
+}
+
+.geomodel-form label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--jp-ui-font-color1);
+}
+
+.geomodel-form .required {
+  color: var(--jp-error-color1);
+  margin-left: 2px;
+}
+
+.geomodel-form .param-desc {
+  margin: 0 0 4px 0;
+  font-size: 10px;
+  color: var(--jp-ui-font-color2);
+  font-style: italic;
+}
+
+.geomodel-form input[type="text"],
+.geomodel-form input[type="number"],
+.geomodel-form select,
+.geomodel-form textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--jp-border-color1);
+  border-radius: 3px;
+  background: var(--jp-layout-color0);
+  color: var(--jp-ui-font-color1);
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.geomodel-form input:focus,
+.geomodel-form select:focus,
+.geomodel-form textarea:focus {
+  outline: none;
+  border-color: var(--jp-brand-color1);
+}
+
+.geomodel-form .file-input-wrapper {
+  display: flex;
+  gap: 6px;
+}
+
+.geomodel-form .file-input-wrapper input {
+  flex: 1;
+}
+
+.geomodel-form .browse-btn {
+  padding: 6px 10px;
+  border: 1px solid var(--jp-border-color1);
+  border-radius: 3px;
+  background: var(--jp-layout-color2);
+  color: var(--jp-ui-font-color1);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.geomodel-form .browse-btn:hover {
+  background: var(--jp-layout-color3);
+}
+
+.geomodel-form .checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.geomodel-form .checkbox-wrapper input {
+  width: auto;
+}
+
+/* ========================================
+   代码预览
+   ======================================== */
+.geomodel-code-preview {
+  margin: 0 16px;
+  border: 1px solid var(--jp-border-color1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.geomodel-code-preview.empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--jp-ui-font-color2);
+  font-size: 12px;
+}
+
+.geomodel-code-preview .code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--jp-layout-color2);
+  border-bottom: 1px solid var(--jp-border-color1);
+}
+
+.geomodel-code-preview .code-header span {
+  font-size: 10px;
+  color: var(--jp-ui-font-color2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.geomodel-code-preview .code-header button {
+  padding: 3px 8px;
+  border: 1px solid var(--jp-border-color1);
+  border-radius: 3px;
+  background: var(--jp-layout-color0);
+  color: var(--jp-ui-font-color1);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.geomodel-code-preview .code-header button:hover {
+  background: var(--jp-layout-color1);
+}
+
+.geomodel-code-preview .code-content {
+  margin: 0;
+  padding: 10px;
+  background: var(--jp-layout-color0);
+  font-family: var(--jp-code-font-family);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-x: auto;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.geomodel-code-preview code {
+  color: var(--jp-content-font-color1);
+}
+
+/* ========================================
+   操作按钮
+   ======================================== */
+.geomodel-actions {
+  padding: 12px 16px;
+  border-top: 1px solid var(--jp-border-color1);
+}
+
+.geomodel-actions .insert-btn {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--jp-brand-color1);
+  border-radius: 3px;
+  background: var(--jp-brand-color1);
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.geomodel-actions .insert-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.geomodel-actions .insert-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========================================
+   文件浏览器弹窗
+   ======================================== */
+.file-browser-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.file-browser-modal {
+  background: var(--jp-layout-color1);
+  border: 1px solid var(--jp-border-color1);
+  border-radius: 4px;
+  width: 360px;
+  max-width: 90%;
+  max-height: 70%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.file-browser-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--jp-border-color1);
+}
+
+.file-browser-header h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--jp-ui-font-color1);
+}
+
+.file-browser-header .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.file-browser-header .refresh-btn {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: var(--jp-ui-font-color2);
+}
+
+.file-browser-header .refresh-btn:hover {
+  background: var(--jp-layout-color2);
+}
+
+.file-browser-header .refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.file-browser-header .close-btn {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  color: var(--jp-ui-font-color2);
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.file-browser-header .close-btn:hover {
+  color: var(--jp-ui-font-color1);
+}
+
+.file-browser-content {
+  padding: 12px;
+  overflow-y: auto;
+  min-height: 150px;
+  max-height: 300px;
+}
+
+.file-browser-content .loading,
+.file-browser-content .empty-notice {
+  text-align: center;
+  color: var(--jp-ui-font-color2);
+  padding: 32px 16px;
+  font-size: 12px;
+}
+
+.file-browser-content .empty-notice .hint {
+  font-size: 11px;
+  margin-top: 6px;
+  opacity: 0.8;
+}
+
+.file-browser-content .file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.file-browser-content .file-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.file-browser-content .file-item:hover {
+  background: var(--jp-layout-color2);
+}
+
+.file-browser-content .file-icon {
+  margin-right: 8px;
+  font-size: 14px;
+  color: var(--jp-ui-font-color2);
+}
+
+.file-browser-content .file-name {
+  flex: 1;
+  font-size: 12px;
+  color: var(--jp-ui-font-color1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-browser-content .file-size {
+  font-size: 10px;
+  color: var(--jp-ui-font-color3);
+  margin-left: 8px;
+}
+
+/* ========================================
+   AI Agent Widget 样式
+   ======================================== */
+.jp-AgentWidget {
+  min-width: 320px;
+}
+
+/* Agent 图标样式 */
+.jp-AgentIcon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23616161'%3E%3Cpath d='M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5A2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5a2.5 2.5 0 0 0 2.5 2.5a2.5 2.5 0 0 0 2.5-2.5a2.5 2.5 0 0 0-2.5-2.5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 20px;
+}
+
+/* 深色主题下的图标 */
+[data-jp-theme-light="false"] .jp-AgentIcon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23B0B0B0'%3E%3Cpath d='M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5A2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5a2.5 2.5 0 0 0 2.5 2.5a2.5 2.5 0 0 0 2.5-2.5a2.5 2.5 0 0 0-2.5-2.5z'/%3E%3C/svg%3E");
+}
