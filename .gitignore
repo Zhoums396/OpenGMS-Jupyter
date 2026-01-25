@@ -55,19 +55,6 @@ Thumbs.db
 *.tmp
 *.temp
 
-# Excluded folders
-PyGeoModel/
-mcp-demo/
-
-道路噪声/
-论文/
-未命名文件夹/
-屋顶光伏/
-UrbanM2MEnd/
-数据获取接口文档.md
-PROJECT_REPORT.md
-ipynb_checkpoints/
-
 # Video/Recording files
 *.screenstudio/
 *.mp4
