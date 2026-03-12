@@ -745,3 +745,417 @@
 [data-jp-theme-light="false"] .jp-AgentIcon {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23B0B0B0'%3E%3Cpath d='M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5A2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5a2.5 2.5 0 0 0 2.5 2.5a2.5 2.5 0 0 0 2.5-2.5a2.5 2.5 0 0 0-2.5-2.5z'/%3E%3C/svg%3E");
 }
+
+
+/* ========================================
+   OpenGeoLab Brand Theme (和鲸-inspired)
+   品牌配色主题 - Override JupyterLab CSS variables
+   ======================================== */
+:root {
+  /* Brand colors */
+  --opengeolab-primary: #2B6CB0;
+  --opengeolab-primary-dark: #1A4971;
+  --opengeolab-primary-light: #4299E1;
+  --opengeolab-accent: #38B2AC;
+  --opengeolab-bg: #F7F8FA;
+  --opengeolab-bg-card: #FFFFFF;
+  --opengeolab-border: #E2E8F0;
+  --opengeolab-text: #1A202C;
+  --opengeolab-text-secondary: #718096;
+
+  /* Override JupyterLab brand colors */
+  --jp-brand-color0: #1A4971;
+  --jp-brand-color1: #2B6CB0;
+  --jp-brand-color2: #4299E1;
+  --jp-brand-color3: #BEE3F8;
+  --jp-brand-color4: #EBF8FF;
+
+  /* Clean up JupyterLab defaults */
+  --jp-layout-color0: #FFFFFF;
+  --jp-layout-color1: #F7F8FA;
+  --jp-layout-color2: #EDF2F7;
+  --jp-border-color0: #CBD5E0;
+  --jp-border-color1: #E2E8F0;
+  --jp-border-color2: #EDF2F7;
+}
+
+
+/* ========================================
+   Logo Replacement - 左上角品牌Logo
+   ======================================== */
+#jp-MainLogo {
+  overflow: visible !important;
+}
+
+#jp-MainLogo.opengeolab-logo-replaced {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px;
+  width: auto !important;
+  min-width: 120px !important;
+  padding: 0 8px 0 10px !important;
+  margin: 0 4px 0 0 !important;
+  cursor: default;
+}
+
+#jp-MainLogo.opengeolab-logo-replaced svg {
+  display: none !important;
+}
+
+.opengeolab-main-logo {
+  height: 20px;
+  width: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.opengeolab-logo-text {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--opengeolab-primary);
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  user-select: none;
+  line-height: 1;
+}
+
+
+/* ========================================
+   Top Panel & Menu Bar - 顶部面板 (和鲸 style)
+   ======================================== */
+#jp-top-panel {
+  background: #FFFFFF !important;
+  border-bottom: 1px solid var(--opengeolab-border) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+#jp-menu-panel {
+  background: transparent !important;
+  border-bottom: none !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100%;
+}
+
+#jp-menu-panel .lm-MenuBar {
+  background: transparent !important;
+  padding-left: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  height: 100%;
+}
+
+#jp-menu-panel .lm-MenuBar-item {
+  padding: 6px 12px !important;
+  font-size: 13px;
+  color: var(--opengeolab-text) !important;
+  border-radius: 4px;
+  margin: 0 1px;
+  transition: all 0.15s ease;
+  display: flex !important;
+  align-items: center !important;
+  line-height: 1;
+}
+
+#jp-menu-panel .lm-MenuBar-item:hover {
+  background: var(--jp-brand-color4, #EBF8FF) !important;
+  color: var(--opengeolab-primary) !important;
+}
+
+#jp-menu-panel .lm-MenuBar-item.lm-mod-active {
+  background: var(--jp-brand-color3, #BEE3F8) !important;
+  color: var(--opengeolab-primary) !important;
+}
+
+
+/* ========================================
+   Document Tab Bar - 文档Tab栏 (和鲸 style)
+   ======================================== */
+.lm-DockPanel-tabBar {
+  background: #FFFFFF !important;
+  border-bottom: 1px solid var(--opengeolab-border) !important;
+  min-height: 37px;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: stretch !important;
+}
+
+.lm-DockPanel-tabBar .lm-TabBar-content {
+  padding-left: 0;
+  padding-top: 0;
+  display: flex !important;
+  align-items: stretch !important;
+}
+
+.lm-DockPanel-tabBar .lm-TabBar-tab {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 0 !important;
+  padding: 0 16px !important;
+  margin: 0 !important;
+  font-size: 13px;
+  color: var(--opengeolab-text-secondary) !important;
+  transition: all 0.12s ease;
+  line-height: 1;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.lm-DockPanel-tabBar .lm-TabBar-tab:hover {
+  background: transparent !important;
+  color: var(--opengeolab-text) !important;
+}
+
+.lm-DockPanel-tabBar .lm-TabBar-tab.lm-mod-current {
+  background: transparent !important;
+  border-bottom: 2px solid var(--opengeolab-primary) !important;
+  color: var(--opengeolab-primary) !important;
+  font-weight: 600;
+}
+
+.lm-DockPanel-tabBar .lm-TabBar-tab.lm-mod-current .lm-TabBar-tabLabel {
+  color: var(--opengeolab-primary) !important;
+}
+
+/* Tab close button - subtle until hover */
+.lm-DockPanel-tabBar .lm-TabBar-tabCloseIcon {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.lm-DockPanel-tabBar .lm-TabBar-tab:hover .lm-TabBar-tabCloseIcon,
+.lm-DockPanel-tabBar .lm-TabBar-tab.lm-mod-current .lm-TabBar-tabCloseIcon {
+  opacity: 0.5;
+}
+
+.lm-DockPanel-tabBar .lm-TabBar-tabCloseIcon:hover {
+  opacity: 1 !important;
+}
+
+/* Tab add button */
+.lm-DockPanel-tabBar .lm-TabBar-addButton {
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+
+.lm-DockPanel-tabBar .lm-TabBar-addButton:hover {
+  background: rgba(43, 108, 176, 0.06);
+}
+
+
+/* ========================================
+   Welcome Page - 自定义欢迎页 (和鲸 style)
+   ======================================== */
+.opengeolab-welcome {
+  background: var(--opengeolab-bg, #F7F8FA);
+  overflow-y: auto;
+}
+
+.welcome-container {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 72px 32px 48px;
+}
+
+.welcome-hero {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.welcome-logo-wrap {
+  display: inline-block;
+  background: #E8EDF2;
+  border-radius: 14px;
+  padding: 14px 28px;
+  margin-bottom: 20px;
+}
+
+.welcome-logo {
+  height: 44px;
+  display: block;
+}
+
+.welcome-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--opengeolab-text, #1A202C);
+  margin: 0 0 8px 0;
+  letter-spacing: -0.2px;
+}
+
+.welcome-subtitle {
+  font-size: 13.5px;
+  color: var(--opengeolab-text-secondary, #718096);
+  margin: 0;
+  font-weight: 400;
+}
+
+.welcome-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 36px;
+}
+
+.welcome-card {
+  background: var(--opengeolab-bg-card, #FFFFFF);
+  border: 1px solid var(--opengeolab-border, #E2E8F0);
+  border-radius: 10px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.welcome-card:hover {
+  border-color: var(--opengeolab-primary, #2B6CB0);
+  box-shadow: 0 4px 12px rgba(43, 108, 176, 0.10);
+  transform: translateY(-1px);
+}
+
+.welcome-card:active {
+  transform: translateY(0);
+}
+
+.welcome-card-icon {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 12px;
+  color: var(--opengeolab-primary, #2B6CB0);
+}
+
+.welcome-card-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.welcome-card-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--opengeolab-text, #1A202C);
+  margin-bottom: 6px;
+}
+
+.welcome-card-desc {
+  font-size: 12.5px;
+  color: var(--opengeolab-text-secondary, #718096);
+  line-height: 1.5;
+}
+
+.welcome-footer {
+  text-align: center;
+  color: #A0AEC0;
+  font-size: 12px;
+}
+
+.welcome-footer p {
+  margin: 0;
+}
+
+
+/* ========================================
+   Launcher Brand Styling - Launcher 品牌卡片
+   ======================================== */
+.jp-Launcher-body {
+  background: linear-gradient(180deg, #f0f4f8 0%, #ffffff 100%) !important;
+}
+
+.jp-Launcher-content {
+  max-width: 900px !important;
+}
+
+.jp-LauncherCard {
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.jp-LauncherCard:hover {
+  box-shadow: 0 4px 12px rgba(21, 101, 192, 0.12) !important;
+  transform: translateY(-1px);
+}
+
+
+/* ========================================
+   General UI Beautification - 通用美化 (和鲸 style)
+   ======================================== */
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Status bar */
+#jp-bottom-panel {
+  background: #FFFFFF !important;
+  border-top: 1px solid var(--opengeolab-border, #E2E8F0) !important;
+}
+
+/* Left sidebar (activity bar) */
+.jp-SideBar.lm-TabBar {
+  background: #FFFFFF !important;
+  border-right: 1px solid var(--opengeolab-border, #E2E8F0) !important;
+}
+
+.jp-SideBar .lm-TabBar-tab {
+  border-left: 2px solid transparent !important;
+  transition: all 0.12s ease;
+}
+
+.jp-SideBar .lm-TabBar-tab.lm-mod-current {
+  border-left: 2px solid var(--opengeolab-primary, #2B6CB0) !important;
+  background: var(--jp-brand-color4, #EBF8FF) !important;
+}
+
+.jp-SideBar .lm-TabBar-tab:hover {
+  background: rgba(43, 108, 176, 0.04) !important;
+}
+
+/* Right sidebar */
+.jp-SideBar.jp-mod-right {
+  background: #FFFFFF !important;
+  border-left: 1px solid var(--opengeolab-border, #E2E8F0) !important;
+}
+
+/* Main content area separator */
+#jp-main-content-panel {
+  border: none !important;
+}
+
+/* Notebook toolbar */
+.jp-NotebookPanel-toolbar {
+  background: #FFFFFF !important;
+  border-bottom: 1px solid var(--opengeolab-border, #E2E8F0) !important;
+  box-shadow: none !important;
+}
+
+/* Clean dropdown menus */
+.lm-Menu {
+  border-radius: 6px !important;
+  border: 1px solid var(--opengeolab-border, #E2E8F0) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+.lm-Menu-item:hover {
+  background: var(--jp-brand-color4, #EBF8FF) !important;
+}
+
+.lm-Menu-item.lm-mod-active {
+  background: var(--jp-brand-color3, #BEE3F8) !important;
+}

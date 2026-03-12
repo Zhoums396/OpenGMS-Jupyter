@@ -1,5 +1,5 @@
-# 仅更新扩展（基于已有 CJK 字体的镜像）
-FROM geomodel-jupyter:latest
+# 仅更新扩展（基于原始基础镜像）
+FROM geomodel-jupyter:backup
 
 USER root
 
@@ -17,6 +17,11 @@ RUN rm -rf /home/jovyan/.cache/matplotlib
 
 # 复制自定义 Jupyter 配置
 COPY GeoModelWeb/server/docker/jupyter_server_config.py /etc/jupyter/jupyter_server_config.py
+
+# 复制品牌定制配置 - 裁剪不需要的功能 & 默认设置
+COPY GeoModelWeb/server/docker/overrides.json /opt/conda/share/jupyter/lab/settings/overrides.json
+RUN mkdir -p /opt/conda/etc/jupyter/labconfig
+COPY GeoModelWeb/server/docker/page_config.json /opt/conda/etc/jupyter/labconfig/page_config.json
 
 USER ${NB_UID}
 

@@ -4,6 +4,9 @@
  * Main entry file - Register extension and sidebar panels
  * - Left sidebar: AI Agent Panel
  * - Right sidebar: GeoModel Tools Panel
+ * - Header: Brand top bar
+ * - Main area: Welcome page
+ * - Launcher: Brand cards
  */
 import {
   JupyterFrontEnd,
@@ -12,9 +15,12 @@ import {
 } from '@jupyterlab/application';
 
 import { INotebookTracker } from '@jupyterlab/notebook';
+import { ILauncher } from '@jupyterlab/launcher';
 import { LabIcon } from '@jupyterlab/ui-components';
 import { GeoModelWidget } from './widget';
 import { AgentWidget } from './agentWidget';
+import { WelcomeWidget } from './welcomePage';
+import { FAVICON_BASE64 } from './assets';
 
 // GeoModel icon SVG
 const geoModelIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
@@ -56,11 +62,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
   id: EXTENSION_ID,
   autoStart: true,
   requires: [INotebookTracker],
-  optional: [ILayoutRestorer],
+  optional: [ILayoutRestorer, ILauncher],
   activate: (
     app: JupyterFrontEnd,
     notebookTracker: INotebookTracker,
-    restorer: ILayoutRestorer | null
+    restorer: ILayoutRestorer | null,
+    launcher: ILauncher | null
   ) => {
     console.log('JupyterLab GeoModel extension is activated!');
 
@@ -106,9 +113,164 @@ const plugin: JupyterFrontEndPlugin<void> = {
       restorer.add(agentWidget, 'geomodel-agent');
     }
 
+    // ==================== Launcher Brand Cards ====================
+    if (launcher) {
+      launcher.add({
+        command: CommandIds.openAgent,
+        category: 'OpenGeoLab',
+        rank: 1
+      });
+      launcher.add({
+        command: CommandIds.openTools,
+        category: 'OpenGeoLab',
+        rank: 2
+      });
+    }
+
+    // ==================== Welcome Page ====================
+    // Show branded welcome page after app is fully restored
+    app.restored.then(() => {
+      const welcomeWidget = new WelcomeWidget(app);
+      app.shell.add(welcomeWidget, 'main');
+      app.shell.activateById(welcomeWidget.id);
+
+      // Activate AI Agent sidebar as default
+      app.shell.activateById(agentWidget.id);
+
+      // ==================== Brand: Replace JupyterLab Logo ====================
+      _applyBranding(app);
+    });
+
     console.log('OpenGeoLab: Tools panel added to right sidebar');
     console.log('OpenGeoLab: AI Agent panel added to left sidebar');
   }
 };
+
+/**
+ * Apply OpenGeoLab branding to the JupyterLab UI:
+ * - Replace the JupyterLab logo with OpenGeoLab icon + text
+ * - Replace favicon
+ * - Update document title
+ * - Add body class for CSS targeting
+ */
+function _applyBranding(app: JupyterFrontEnd): void {
+  document.body.classList.add('opengeolab-branded');
+
+  // 1. Replace the main logo (with retry since DOM may not be ready)
+  _replaceLogo(0);
+
+  // 2. Update page title
+  document.title = 'OpenGeoLab';
+
+  // 3. Replace favicon
+  const favicons = document.querySelectorAll<HTMLLinkElement>('link.favicon, link[rel="icon"]');
+  favicons.forEach((link) => {
+    link.href = `data:image/x-icon;base64,${FAVICON_BASE64}`;
+  });
+
+  // 4. Monitor title changes and keep our brand
+  const titleObserver = new MutationObserver(() => {
+    if (!document.title.includes('OpenGeoLab')) {
+      document.title = document.title.replace('JupyterLab', 'OpenGeoLab');
+    }
+  });
+  const titleEl = document.querySelector('head > title');
+  if (titleEl) {
+    titleObserver.observe(titleEl, { childList: true, characterData: true, subtree: true });
+  }
+
+  // 5. Set left panel default width to ~40% of viewport
+  _setLeftPanelWidth(app);
+
+  console.log('OpenGeoLab: Branding applied');
+}
+
+/**
+ * Replace the JupyterLab logo with retry mechanism.
+ * The logo widget may not be rendered immediately.
+ */
+function _replaceLogo(attempt: number): void {
+  const logoEl = document.getElementById('jp-MainLogo');
+  if (logoEl) {
+    // Clear existing content (the JupyterLab SVG)
+    logoEl.classList.add('opengeolab-logo-replaced');
+    logoEl.innerHTML = `
+      <img class="opengeolab-main-logo"
+           src="data:image/x-icon;base64,${FAVICON_BASE64}"
+           alt="OpenGeoLab" />
+      <span class="opengeolab-logo-text">OpenGeoLab</span>
+    `;
+    console.log('OpenGeoLab: Logo replaced successfully');
+    return;
+  }
+  // Retry up to 20 times (2 seconds)
+  if (attempt < 20) {
+    setTimeout(() => _replaceLogo(attempt + 1), 100);
+  } else {
+    console.warn('OpenGeoLab: Could not find #jp-MainLogo after retries');
+  }
+}
+
+/**
+ * Set the left panel (Agent sidebar) default width to ~40% of viewport.
+ * Uses interval-based retry to overcome Lumino layout recalculations.
+ */
+function _setLeftPanelWidth(app: JupyterFrontEnd): void {
+  let attempts = 0;
+  const maxAttempts = 30;
+
+  const interval = setInterval(() => {
+    attempts++;
+    try {
+      const shell = app.shell as any;
+
+      // Method 1: Access JupyterLab's internal horizontal SplitPanel
+      const hsplit = shell._hsplitPanel || shell._splitPanel;
+      if (hsplit && hsplit.layout && typeof hsplit.layout.setRelativeSizes === 'function') {
+        hsplit.layout.setRelativeSizes([0.38, 0.62, 0]);
+        console.log('OpenGeoLab: Left panel width set to 38% via shell._hsplitPanel');
+        clearInterval(interval);
+        return;
+      }
+
+      // Method 2: Walk DOM to find the SplitPanel containing left sidebar
+      const leftStack = document.getElementById('jp-left-stack');
+      if (leftStack) {
+        const splitChild = leftStack.closest('.lm-SplitPanel-child') as HTMLElement;
+        if (splitChild) {
+          const splitPanel = splitChild.parentElement;
+          if (splitPanel) {
+            const splitWidget = (splitPanel as any).__Lumino_widget__ || (splitPanel as any).__Phosphor_widget__;
+            if (splitWidget && splitWidget.layout && typeof splitWidget.layout.setRelativeSizes === 'function') {
+              splitWidget.layout.setRelativeSizes([0.38, 0.62, 0]);
+              console.log('OpenGeoLab: Left panel width set to 38% via DOM walk');
+              clearInterval(interval);
+              return;
+            }
+          }
+          // Fallback: force width via inline style
+          const targetWidth = Math.floor(window.innerWidth * 0.38);
+          splitChild.style.setProperty('width', targetWidth + 'px', 'important');
+          splitChild.style.setProperty('min-width', targetWidth + 'px', 'important');
+          console.log(`OpenGeoLab: Left panel width set to ${targetWidth}px via inline style`);
+          // Remove min-width after layout settles
+          setTimeout(() => {
+            splitChild.style.removeProperty('min-width');
+          }, 1000);
+          clearInterval(interval);
+          return;
+        }
+      }
+
+      if (attempts >= maxAttempts) {
+        console.warn('OpenGeoLab: Could not set left panel width after max attempts');
+        clearInterval(interval);
+      }
+    } catch (e) {
+      console.warn('OpenGeoLab: Failed to set left panel width', e);
+      clearInterval(interval);
+    }
+  }, 500);
+}
 
 export default plugin;

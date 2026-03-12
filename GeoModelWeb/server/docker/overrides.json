@@ -1,0 +1,15 @@
+{
+  "@jupyterlab/apputils-extension:themes": {
+    "theme": "JupyterLab Light"
+  },
+  "@jupyterlab/terminal-extension:plugin": {
+    "fontFamily": "'Menlo', 'DejaVu Sans Mono', 'Consolas', monospace",
+    "fontSize": 13
+  },
+  "@jupyterlab/notebook-extension:tracker": {
+    "codeCellConfig": {
+      "lineNumbers": true,
+      "fontSize": 13
+    }
+  }
+}

@@ -11,6 +11,7 @@ import { agentApi, ChatMessage, StreamEvent, ChatContext, ToolCall, WorkspaceFil
 import { LLMSettings } from './LLMSettings';
 import { ChatHistory } from './ChatHistory';
 import { renderMarkdown } from '../utils/markdownRenderer';
+import { FAVICON_BASE64 } from '../assets';
 
 /**
  * 获取 API 基础 URL（与 agentApi.ts 保持一致）
@@ -1420,9 +1421,7 @@ export const AgentPanel: React.FC<AgentPanelProps> = ({ notebookTracker, app }) 
             {/* Header */}
             <div className="agent-header">
                 <div className="header-left">
-                    <svg className="agent-logo" width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm2.8 11.2c-.4.4-1 .8-1.8.8s-1.4-.4-1.8-.8c-.8-.8-1.2-2-1.2-3.2s.4-2.4 1.2-3.2c.4-.4 1-.8 1.8-.8s1.4.4 1.8.8c.8.8 1.2 2 1.2 3.2s-.4 2.4-1.2 3.2z"/>
-                    </svg>
+                    <img className="agent-logo" src={`data:image/x-icon;base64,${FAVICON_BASE64}`} alt="OpenGeoLab" width="20" height="20" />
                     <span className="header-title">{conversationTitle}</span>
                 </div>
                 <div className="header-right">
@@ -1449,9 +1448,7 @@ export const AgentPanel: React.FC<AgentPanelProps> = ({ notebookTracker, app }) 
                 {messages.length === 0 && !streamingContent && (
                     <div className="agent-welcome">
                         <div className="welcome-icon">
-                            <svg width="48" height="48" viewBox="0 0 16 16" fill="currentColor" opacity="0.5">
-                                <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm2.8 11.2c-.4.4-1 .8-1.8.8s-1.4-.4-1.8-.8c-.8-.8-1.2-2-1.2-3.2s.4-2.4 1.2-3.2c.4-.4 1-.8 1.8-.8s1.4.4 1.8.8c.8.8 1.2 2 1.2 3.2s-.4 2.4-1.2 3.2z"/>
-                            </svg>
+                            <img src={`data:image/x-icon;base64,${FAVICON_BASE64}`} alt="OpenGeoLab" width="48" height="48" style={{opacity: 0.7}} />
                         </div>
                         <h3>OpenGeoLab AI Assistant</h3>
                         <p className="welcome-subtitle">I can code, inspect your project, run terminal commands, and help reproduce workflows.</p>
@@ -1724,7 +1721,9 @@ export const AgentPanel: React.FC<AgentPanelProps> = ({ notebookTracker, app }) 
                 }
                 
                 .agent-logo {
-                    color: var(--jp-brand-color1, #1976d2);
+                    width: 20px;
+                    height: 20px;
+                    object-fit: contain;
                 }
                 
                 .header-title {
