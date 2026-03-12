@@ -19,32 +19,32 @@ const LLM_PROVIDERS = {
     openai: {
         name: 'OpenAI',
         baseUrl: 'https://api.openai.com/v1',
-        models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+        models: ['gpt-4o-mini', 'gpt-4o'],
         defaultModel: 'gpt-4o-mini'
     },
     anthropic: {
         name: 'Anthropic (Claude)',
         baseUrl: 'https://api.anthropic.com/v1',
-        models: ['claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'],
+        models: ['claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022'],
         defaultModel: 'claude-sonnet-4-20250514',
         isAnthropic: true
     },
     deepseek: {
         name: 'DeepSeek',
         baseUrl: 'https://api.deepseek.com/v1',
-        models: ['deepseek-chat', 'deepseek-coder'],
+        models: ['deepseek-chat'],
         defaultModel: 'deepseek-chat'
     },
-    openrouter: {
-        name: 'OpenRouter',
-        baseUrl: 'https://openrouter.ai/api/v1',
-        models: ['anthropic/claude-sonnet-4', 'openai/gpt-4o', 'google/gemini-pro'],
-        defaultModel: 'anthropic/claude-sonnet-4'
+    aihubmix: {
+        name: 'AiHubMix',
+        baseUrl: 'https://api.aihubmix.com/v1',
+        models: ['gpt-4o-mini', 'claude-3-5-sonnet', 'deepseek-chat', 'alicloud-qwen3.5-plus'],
+        defaultModel: 'gpt-4o-mini'
     },
     ollama: {
         name: 'Ollama (本地)',
         baseUrl: 'http://localhost:11434/v1',
-        models: ['qwen2.5:7b', 'qwen2.5:3b', 'llama3', 'codellama', 'mistral'],
+        models: ['qwen2.5:7b', 'llama3'],
         defaultModel: 'qwen2.5:7b',
         noApiKey: true
     },

@@ -9,10 +9,9 @@ USER root
 # 复制扩展 wheel 文件
 COPY jupyterlab_geomodel-0.1.0-py3-none-any.whl /tmp/
 
-# 安装 GeoModel 扩展（不安装 PyGeoModel SDK 以保持纯净）
+# Install GeoModel extension from local wheel only (no external network dependency)
 RUN pip install --no-cache-dir \
-    /tmp/jupyterlab_geomodel-0.1.0-py3-none-any.whl \
-    requests && \
+    /tmp/jupyterlab_geomodel-0.1.0-py3-none-any.whl && \
     rm -f /tmp/*.whl
 
 # 切换回 jovyan 用户

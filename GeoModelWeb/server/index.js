@@ -36,8 +36,12 @@ app.use(cors({
     origin: [
         'http://localhost:5173', 
         'http://localhost:3000',
+        'http://localhost:8888',
+        'http://127.0.0.1:8888',
         FRONTEND_URL,
         BACKEND_URL,
+        /^http:\/\/localhost:\d+$/,
+        /^http:\/\/127\.0\.0\.1:\d+$/,
         /^http:\/\/192\.168\.\d+\.\d+:\d+$/,  // 允许所有 192.168.x.x 的局域网地址
         /^http:\/\/172\.\d+\.\d+\.\d+:\d+$/   // 允许所有 172.x.x.x 的局域网地址
     ],
@@ -63,7 +67,7 @@ app.use('/api/jupyter', jupyterOptionalAuth, jupyterRoutes);
 // Agent 路由：使用可选认证中间件
 const agentOptionalAuth = (req, res, next) => {
     // 这些端点不需要认证（开发模式下全部公开）
-    const publicPaths = ['/health', '/providers', '/config', '/test', '/chat', '/tool-results', '/scan-workspace', '/conversations'];
+    const publicPaths = ['/health', '/providers', '/config', '/test', '/chat', '/tool-results', '/scan-workspace', '/conversations', '/cases'];
     if (publicPaths.some(p => req.path === p || req.path.startsWith(p))) {
         req.user = req.user || { userId: 'anonymous' };
         return next();

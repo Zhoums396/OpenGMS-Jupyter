@@ -36,120 +36,182 @@
 
     <!-- 主内容区 -->
     <div class="project-container">
-      <!-- 左侧文件列表 -->
+      <!-- Left workspace panel -->
       <aside class="file-sidebar">
         <div class="sidebar-header">
-          <h2>资源管理器</h2>
-          <span class="file-count">{{ fileCount }} 个文件</span>
+          <h2>Project Workspace</h2>
+          <span class="file-count">{{ fileCount }} files</span>
         </div>
-        <div class="file-tree">
-          <!-- 根目录 -->
-          <div class="tree-root">
-            <div class="tree-item root-item" @click="toggleRootExpand">
-              <span :class="['chevron', { expanded: rootExpanded }]">▶</span>
-              <span class="folder-emoji"></span>
-              <span class="item-name root-name">{{ projectName }}</span>
-            </div>
-            
-            <!-- 递归文件树 -->
-            <div v-show="rootExpanded" class="tree-children">
-              <template v-for="item in fileTree" :key="item.path">
-                <!-- 文件夹 -->
-                <div v-if="item.type === 'folder'" class="tree-folder">
-                  <div 
-                    class="tree-item folder-item"
-                    :style="{ paddingLeft: '24px' }"
-                    @click="toggleFolder(item.path)"
-                  >
-                    <span :class="['chevron', { expanded: expandedFolders.has(item.path) }]">▶</span>
-                    <span class="folder-emoji"></span>
-                    <span class="item-name">{{ item.name }}</span>
-                  </div>
-                  <!-- 子文件/文件夹 -->
-                  <div v-show="expandedFolders.has(item.path)" class="tree-children">
-                    <template v-for="child in item.children" :key="child.path">
-                      <!-- 递归子文件夹 -->
-                      <div v-if="child.type === 'folder'" class="tree-folder">
-                        <div 
-                          class="tree-item folder-item"
-                          :style="{ paddingLeft: '44px' }"
-                          @click="toggleFolder(child.path)"
-                        >
-                          <span :class="['chevron', { expanded: expandedFolders.has(child.path) }]">▶</span>
-                          <span class="folder-emoji"></span>
-                          <span class="item-name">{{ child.name }}</span>
-                        </div>
-                        <div v-show="expandedFolders.has(child.path)" class="tree-children">
-                          <template v-for="grandchild in child.children" :key="grandchild.path">
-                            <!-- 第三级子文件夹 -->
-                            <div v-if="grandchild.type === 'folder'" class="tree-folder">
-                              <div 
-                                class="tree-item folder-item"
-                                :style="{ paddingLeft: '64px' }"
-                                @click="toggleFolder(grandchild.path)"
-                              >
-                                <span :class="['chevron', { expanded: expandedFolders.has(grandchild.path) }]">▶</span>
-                                <span class="folder-emoji"></span>
-                                <span class="item-name">{{ grandchild.name }}</span>
-                              </div>
-                              <div v-show="expandedFolders.has(grandchild.path)" class="tree-children">
-                                <div 
-                                  v-for="ggchild in grandchild.children" 
-                                  :key="ggchild.path"
-                                  :class="['tree-item', { selected: selectedFile?.path === ggchild.path }]"
-                                  :style="{ paddingLeft: '84px' }"
-                                  @click="handleFileSelect(ggchild)"
+
+        <div class="version-switcher">
+          <label for="versionSelect">Version</label>
+          <select id="versionSelect" v-model="selectedVersionId" class="version-select">
+            <option v-for="version in versionEntries" :key="version.id" :value="version.id">
+              {{ version.label }}
+            </option>
+          </select>
+        </div>
+
+        <div class="workspace-tabs">
+          <button :class="['workspace-tab', { active: workspaceTab === 'content' }]" @click="workspaceTab = 'content'">Content</button>
+          <button :class="['workspace-tab', { active: workspaceTab === 'data' }]" @click="workspaceTab = 'data'">Data</button>
+          <button :class="['workspace-tab', { active: workspaceTab === 'versions' }]" @click="workspaceTab = 'versions'">Versions</button>
+          <button :class="['workspace-tab', { active: workspaceTab === 'forks' }]" @click="workspaceTab = 'forks'">Fork Records</button>
+        </div>
+
+        <div class="workspace-body">
+          <div v-show="workspaceTab === 'content'" class="file-tree">
+            <div class="tree-root">
+              <div class="tree-item root-item" @click="toggleRootExpand">
+                <span :class="['chevron', { expanded: rootExpanded }]">▶</span>
+                <span class="folder-emoji"></span>
+                <span class="item-name root-name">{{ projectName }}</span>
+              </div>
+
+              <div v-show="rootExpanded" class="tree-children">
+                <template v-for="item in fileTree" :key="item.path">
+                  <div v-if="item.type === 'folder'" class="tree-folder">
+                    <div
+                      class="tree-item folder-item"
+                      :style="{ paddingLeft: '24px' }"
+                      @click="toggleFolder(item.path)"
+                    >
+                      <span :class="['chevron', { expanded: expandedFolders.has(item.path) }]">▶</span>
+                      <span class="folder-emoji"></span>
+                      <span class="item-name">{{ item.name }}</span>
+                    </div>
+                    <div v-show="expandedFolders.has(item.path)" class="tree-children">
+                      <template v-for="child in item.children" :key="child.path">
+                        <div v-if="child.type === 'folder'" class="tree-folder">
+                          <div
+                            class="tree-item folder-item"
+                            :style="{ paddingLeft: '44px' }"
+                            @click="toggleFolder(child.path)"
+                          >
+                            <span :class="['chevron', { expanded: expandedFolders.has(child.path) }]">▶</span>
+                            <span class="folder-emoji"></span>
+                            <span class="item-name">{{ child.name }}</span>
+                          </div>
+                          <div v-show="expandedFolders.has(child.path)" class="tree-children">
+                            <template v-for="grandchild in child.children" :key="grandchild.path">
+                              <div v-if="grandchild.type === 'folder'" class="tree-folder">
+                                <div
+                                  class="tree-item folder-item"
+                                  :style="{ paddingLeft: '64px' }"
+                                  @click="toggleFolder(grandchild.path)"
                                 >
-                                  <span class="chevron-placeholder"></span>
-                                  <span class="file-emoji">{{ getFileEmoji(ggchild) }}</span>
-                                  <span class="item-name">{{ ggchild.name }}</span>
+                                  <span :class="['chevron', { expanded: expandedFolders.has(grandchild.path) }]">▶</span>
+                                  <span class="folder-emoji"></span>
+                                  <span class="item-name">{{ grandchild.name }}</span>
+                                </div>
+                                <div v-show="expandedFolders.has(grandchild.path)" class="tree-children">
+                                  <div
+                                    v-for="ggchild in grandchild.children"
+                                    :key="ggchild.path"
+                                    :class="['tree-item', { selected: selectedFile?.path === ggchild.path }]"
+                                    :style="{ paddingLeft: '84px' }"
+                                    @click="handleFileSelect(ggchild)"
+                                  >
+                                    <span class="chevron-placeholder"></span>
+                                    <span class="file-emoji">{{ getFileEmoji(ggchild) }}</span>
+                                    <span class="item-name">{{ ggchild.name }}</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <!-- 第三级文件 -->
-                            <div 
-                              v-else
-                              :class="['tree-item', { selected: selectedFile?.path === grandchild.path }]"
-                              :style="{ paddingLeft: '64px' }"
-                              @click="handleFileSelect(grandchild)"
-                            >
-                              <span class="chevron-placeholder"></span>
-                              <span class="file-emoji">{{ getFileEmoji(grandchild) }}</span>
-                              <span class="item-name">{{ grandchild.name }}</span>
-                            </div>
-                          </template>
+                              <div
+                                v-else
+                                :class="['tree-item', { selected: selectedFile?.path === grandchild.path }]"
+                                :style="{ paddingLeft: '64px' }"
+                                @click="handleFileSelect(grandchild)"
+                              >
+                                <span class="chevron-placeholder"></span>
+                                <span class="file-emoji">{{ getFileEmoji(grandchild) }}</span>
+                                <span class="item-name">{{ grandchild.name }}</span>
+                              </div>
+                            </template>
+                          </div>
                         </div>
-                      </div>
-                      <!-- 子文件 -->
-                      <div 
-                        v-else
-                        :class="['tree-item', { selected: selectedFile?.path === child.path }]"
-                        :style="{ paddingLeft: '44px' }"
-                        @click="handleFileSelect(child)"
-                      >
-                        <span class="chevron-placeholder"></span>
-                        <span class="file-emoji">{{ getFileEmoji(child) }}</span>
-                        <span class="item-name">{{ child.name }}</span>
-                      </div>
-                    </template>
+                        <div
+                          v-else
+                          :class="['tree-item', { selected: selectedFile?.path === child.path }]"
+                          :style="{ paddingLeft: '44px' }"
+                          @click="handleFileSelect(child)"
+                        >
+                          <span class="chevron-placeholder"></span>
+                          <span class="file-emoji">{{ getFileEmoji(child) }}</span>
+                          <span class="item-name">{{ child.name }}</span>
+                        </div>
+                      </template>
+                    </div>
                   </div>
+                  <div
+                    v-else
+                    :class="['tree-item', { selected: selectedFile?.path === item.path }]"
+                    :style="{ paddingLeft: '24px' }"
+                    @click="handleFileSelect(item)"
+                  >
+                    <span class="chevron-placeholder"></span>
+                    <span class="file-emoji">{{ getFileEmoji(item) }}</span>
+                    <span class="item-name">{{ item.name }}</span>
+                  </div>
+                </template>
+
+                <div v-if="fileTree.length === 0" class="empty-tree">
+                  <p>No files yet</p>
+                  <p class="hint">Start Jupyter to create project files</p>
                 </div>
-                <!-- 根级文件 -->
-                <div 
-                  v-else
-                  :class="['tree-item', { selected: selectedFile?.path === item.path }]"
-                  :style="{ paddingLeft: '24px' }"
-                  @click="handleFileSelect(item)"
-                >
-                  <span class="chevron-placeholder"></span>
-                  <span class="file-emoji">{{ getFileEmoji(item) }}</span>
-                  <span class="item-name">{{ item.name }}</span>
-                </div>
-              </template>
-              
-              <div v-if="fileTree.length === 0" class="empty-tree">
-                <p>暂无文件</p>
-                <p class="hint">启动 Jupyter 后可创建文件</p>
+              </div>
+            </div>
+          </div>
+
+          <div v-show="workspaceTab === 'data'" class="tab-panel">
+            <div class="tab-title">Data Files</div>
+            <div v-if="dataFiles.length === 0" class="empty-tree">
+              <p>No data files detected</p>
+              <p class="hint">Add CSV, TIFF, JSON, XML, ZIP or related files</p>
+            </div>
+            <div v-else class="data-file-list">
+              <button
+                v-for="item in dataFiles"
+                :key="item.path || item.name"
+                class="data-file-item"
+                @click="selectFile(item)"
+              >
+                <span class="file-name">{{ item.name }}</span>
+                <span class="file-size">{{ formatSize(item.size) }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div v-show="workspaceTab === 'versions'" class="tab-panel">
+            <div class="tab-title">Version Timeline</div>
+            <div v-if="versionEntries.length === 0" class="empty-tree">
+              <p>No version metadata available</p>
+            </div>
+            <div v-else class="version-list">
+              <button
+                v-for="entry in versionEntries"
+                :key="entry.id"
+                :class="['version-item', { active: selectedVersionId === entry.id }]"
+                @click="selectedVersionId = entry.id"
+              >
+                <span class="version-name">{{ entry.label }}</span>
+                <span class="version-time">{{ formatDateTime(entry.time) }}</span>
+                <span class="version-note">{{ entry.note }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div v-show="workspaceTab === 'forks'" class="tab-panel">
+            <div class="tab-title">Fork Records</div>
+            <div v-if="forkRecords.length === 0" class="empty-tree">
+              <p>No fork records yet</p>
+            </div>
+            <div v-else class="fork-list">
+              <div v-for="record in forkRecords" :key="record.id" class="fork-item">
+                <span class="fork-title">{{ record.title }}</span>
+                <span class="fork-time">{{ formatDateTime(record.time) }}</span>
+                <span class="fork-note">{{ record.note }}</span>
               </div>
             </div>
           </div>
@@ -410,6 +472,8 @@ const showImageSelector = ref(false)
 const availableImages = ref([])
 const selectedImageId = ref('')
 const loadingImages = ref(false)
+const workspaceTab = ref('content')
+const selectedVersionId = ref('')
 
 // 需要隐藏的文件/文件夹
 const hiddenPatterns = [
@@ -423,11 +487,23 @@ const hiddenPatterns = [
   '__MACOSX'
 ]
 
+const dataExtensions = [
+  '.csv', '.tsv', '.xlsx', '.xls', '.json', '.xml',
+  '.tif', '.tiff', '.nc', '.h5', '.hdf5',
+  '.zip', '.rar', '.7z', '.tar', '.gz',
+  '.geojson', '.shp', '.dbf', '.prj', '.txt'
+]
+
 // 过滤隐藏文件
 const shouldHideFile = (name) => {
   return hiddenPatterns.some(pattern => 
     name === pattern || name.endsWith(pattern) || name.startsWith('.')
   )
+}
+
+const isDataAsset = (name = '') => {
+  const lowerName = name.toLowerCase()
+  return dataExtensions.some(ext => lowerName.endsWith(ext))
 }
 
 // 构建文件树结构
@@ -493,6 +569,69 @@ const buildChildrenTree = (items, parentPath) => {
 // 文件计数（排除隐藏文件）
 const fileCount = computed(() => {
   return files.value.filter(f => !shouldHideFile(f.name)).length
+})
+
+const dataFiles = computed(() => {
+  return files.value
+    .filter(item => item.type !== 'folder')
+    .filter(item => !shouldHideFile(item.name))
+    .filter(item => isDataAsset(item.name))
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
+
+const versionEntries = computed(() => {
+  const list = []
+  if (!project.value) return list
+
+  list.push({
+    id: 'current',
+    label: 'Current',
+    time: project.value.modifiedAt || project.value.createdAt || new Date().toISOString(),
+    note: 'Latest workspace snapshot'
+  })
+
+  if (project.value.createdAt) {
+    list.push({
+      id: 'initial',
+      label: 'Initial',
+      time: project.value.createdAt,
+      note: 'Project creation point'
+    })
+  }
+
+  if (project.value.forkedAt) {
+    list.push({
+      id: 'forked',
+      label: 'Forked',
+      time: project.value.forkedAt,
+      note: 'Created from upstream project'
+    })
+  }
+
+  return list
+})
+
+const forkRecords = computed(() => {
+  if (!project.value) return []
+  const records = []
+
+  if (project.value.forkedFrom) {
+    records.push({
+      id: 'upstream',
+      title: `Forked from ${project.value.forkedFrom.owner}/${project.value.forkedFrom.projectName}`,
+      time: project.value.forkedAt || project.value.createdAt || new Date().toISOString(),
+      note: 'Upstream reference'
+    })
+  }
+
+  records.push({
+    id: 'owner',
+    title: `Owned by ${project.value.createdBy || 'Current user'}`,
+    time: project.value.createdAt || new Date().toISOString(),
+    note: 'Project owner record'
+  })
+
+  return records
 })
 
 // 切换根目录展开
@@ -840,6 +979,18 @@ onMounted(async () => {
   ])
 })
 
+watch(versionEntries, (entries) => {
+  if (!entries.length) {
+    selectedVersionId.value = ''
+    return
+  }
+
+  const exists = entries.some(entry => entry.id === selectedVersionId.value)
+  if (!exists) {
+    selectedVersionId.value = entries[0].id
+  }
+}, { immediate: true })
+
 // 监听项目名变化
 watch(projectName, () => {
   loadProject()
@@ -988,7 +1139,7 @@ watch(projectName, () => {
 
 /* 左侧文件栏 */
 .file-sidebar {
-  width: 260px;
+  width: 320px;
   background: #ffffff;
   border-right: 1px solid #e4e7ed;
   display: flex;
@@ -1000,21 +1151,85 @@ watch(projectName, () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 12px 14px;
   border-bottom: 1px solid #e4e7ed;
   background: #f8f9fb;
 }
 
 .sidebar-header h2 {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   margin: 0;
   color: #303133;
 }
 
 .file-count {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: #909399;
+}
+
+.version-switcher {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e4e7ed;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+}
+
+.version-switcher label {
+  font-size: 12px;
+  color: #606266;
+  min-width: 52px;
+}
+
+.version-select {
+  flex: 1;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  background: #fff;
+  color: #303133;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.workspace-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e4e7ed;
+  background: #f8f9fb;
+}
+
+.workspace-tab {
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #606266;
+  padding: 7px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.workspace-tab:hover {
+  border-color: #409eff;
+  color: #409eff;
+}
+
+.workspace-tab.active {
+  border-color: #409eff;
+  background: rgba(64, 158, 255, 0.1);
+  color: #1f6ad8;
+}
+
+.workspace-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 文件树样式 */
@@ -1022,6 +1237,124 @@ watch(projectName, () => {
   flex: 1;
   overflow-y: auto;
   padding: 4px 0;
+}
+
+.tab-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+}
+
+.tab-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 8px;
+}
+
+.data-file-list,
+.version-list,
+.fork-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.data-file-item {
+  width: 100%;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.data-file-item:hover {
+  border-color: #409eff;
+  background: rgba(64, 158, 255, 0.06);
+}
+
+.data-file-item .file-name {
+  color: #303133;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-file-item .file-size {
+  color: #909399;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.version-item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.version-item:hover {
+  border-color: #409eff;
+  background: rgba(64, 158, 255, 0.04);
+}
+
+.version-item.active {
+  border-color: #409eff;
+  background: rgba(64, 158, 255, 0.1);
+}
+
+.version-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.version-time {
+  font-size: 11px;
+  color: #606266;
+}
+
+.version-note {
+  font-size: 11px;
+  color: #909399;
+}
+
+.fork-item {
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fork-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.fork-time {
+  font-size: 11px;
+  color: #606266;
+}
+
+.fork-note {
+  font-size: 11px;
+  color: #909399;
 }
 
 .tree-root {
@@ -1865,5 +2198,31 @@ watch(projectName, () => {
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+@media (max-width: 1080px) {
+  .file-sidebar {
+    width: 290px;
+  }
+}
+
+@media (max-width: 768px) {
+  .project-container {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - 64px);
+  }
+
+  .file-sidebar {
+    width: 100%;
+    height: 46vh;
+    border-right: none;
+    border-bottom: 1px solid #e4e7ed;
+    box-shadow: none;
+  }
+
+  .preview-area {
+    padding: 14px;
+  }
 }
 </style>

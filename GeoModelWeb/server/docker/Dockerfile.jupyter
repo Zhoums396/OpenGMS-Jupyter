@@ -10,11 +10,10 @@ USER root
 COPY jupyterlab_geomodel-0.1.0-py3-none-any.whl /tmp/
 COPY pygeomodel-1.0.4-py3-none-any.whl /tmp/
 
-# 安装扩展和 PyGeoModel SDK，以及常用地理可视化库
+# Install extension wheels from local artifacts only (no external network dependency)
 RUN pip install --no-cache-dir \
     /tmp/jupyterlab_geomodel-0.1.0-py3-none-any.whl \
-    /tmp/pygeomodel-1.0.4-py3-none-any.whl \
-    folium && \
+    /tmp/pygeomodel-1.0.4-py3-none-any.whl && \
     rm -f /tmp/*.whl
 
 # 切换回 jovyan 用户

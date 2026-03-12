@@ -52,6 +52,8 @@ export interface ChatContext {
     currentCellCode?: string;
     selectedText?: string;
     workingDirectory?: string;
+    projectName?: string;
+    userName?: string;
     availableFiles?: string[];
     workspaceFiles?: WorkspaceFiles;
 }
@@ -71,6 +73,17 @@ export interface WorkspaceFiles {
     raster: WorkspaceFile[];
     table: WorkspaceFile[];
     other: WorkspaceFile[];
+}
+
+export interface AgentCase {
+    id: string;
+    title: string;
+    category: string;
+    difficulty: string;
+    goal: string;
+    starterPrompt: string;
+    expectedTools: string[];
+    acceptanceCriteria: string[];
 }
 
 /**
@@ -124,7 +137,7 @@ export async function getProviders(): Promise<Record<string, LLMProvider>> {
     });
     
     if (!response.ok) {
-        throw new Error('获取 Provider 列表失败');
+        throw new Error('Failed to load provider list');
     }
     
     const data = await response.json();
@@ -140,7 +153,7 @@ export async function getConfig(): Promise<LLMConfig> {
     });
     
     if (!response.ok) {
-        throw new Error('获取配置失败');
+        throw new Error('Failed to load configuration');
     }
     
     const data = await response.json();
@@ -161,7 +174,7 @@ export async function saveConfig(config: Partial<LLMConfig>): Promise<void> {
     });
     
     if (!response.ok) {
-        throw new Error('保存配置失败');
+        throw new Error('Failed to save configuration');
     }
 }
 
@@ -180,7 +193,7 @@ export async function testConnection(): Promise<{ status: string; message: strin
     const data = await response.json();
     
     if (!response.ok) {
-        throw new Error(data.error || '连接测试失败');
+        throw new Error(data.error || 'Connection test failed');
     }
     
     return data;
@@ -407,6 +420,23 @@ export async function* chat(
     context?: ChatContext
 ): AsyncGenerator<StreamEvent> {
     const url = `${getApiBase()}${API_BASE}/chat`;
+    const containerInfo = await extractContainerInfo();
+    const mergedContext: ChatContext = {
+        ...(context || {}),
+        projectName: context?.projectName || containerInfo?.projectName || '',
+        userName: context?.userName || containerInfo?.userName || ''
+    };
+
+    const requestBody: Record<string, any> = {
+        message,
+        sessionId,
+        context: mergedContext
+    };
+
+    if (containerInfo) {
+        requestBody.userName = containerInfo.userName;
+        requestBody.projectName = containerInfo.projectName;
+    }
     console.log('[AgentAPI] chat URL:', url);
     
     const response = await fetch(url, {
@@ -415,17 +445,17 @@ export async function* chat(
             'Content-Type': 'application/json',
             ...getAuthHeaders()
         },
-        body: JSON.stringify({ message, sessionId, context })
+        body: JSON.stringify(requestBody)
     });
     
     console.log('[AgentAPI] chat response status:', response.status);
     
     if (!response.ok) {
-        let errorMsg = '请求失败';
+        let errorMsg = 'Request failed';
         try {
             const error = await response.json();
             if (error.needConfig) {
-                yield { type: 'error', error: '请先配置 LLM API' };
+                yield { type: 'error', error: 'Please configure LLM API first' };
                 return;
             }
             errorMsg = error.error || errorMsg;
@@ -482,11 +512,27 @@ export async function getTools(): Promise<any[]> {
 }
 
 /**
+ * Get curated smart cases for autonomous workflows
+ */
+export async function getCases(): Promise<AgentCase[]> {
+    const response = await fetch(`${getApiBase()}${API_BASE}/cases`, {
+        headers: getAuthHeaders()
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to fetch agent cases');
+    }
+
+    const data = await response.json();
+    return data.cases || [];
+}
+
+/**
  * 提交工具执行结果（流式响应，用于 Agent 循环）
  */
 export async function* submitToolResults(
     sessionId: string,
-    toolResults: Array<{ toolCallId: string; result: any }>
+    toolResults: Array<{ toolCallId: string; result: any; images?: string[] }>
 ): AsyncGenerator<StreamEvent> {
     try {
         const apiBase = getApiBase();
@@ -856,6 +902,64 @@ export async function* chatWithHistory(
     }
 }
 
+/**
+ * Ask mode: 直接调用 LLM，不经过 Agent 工具循环
+ */
+export async function* askDirect(
+    message: string,
+    history?: Array<{ role: string; content: string }>
+): AsyncGenerator<StreamEvent> {
+    const url = `${getApiBase()}${API_BASE}/ask`;
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+        },
+        body: JSON.stringify({ message, history })
+    });
+
+    if (!response.ok) {
+        let errorMsg = 'Ask request failed';
+        try {
+            const error = await response.json();
+            errorMsg = error.error || errorMsg;
+        } catch (e) {
+            // ignore
+        }
+        throw new Error(errorMsg);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+        throw new Error('无法读取响应流');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+            if (line.startsWith('data:')) {
+                try {
+                    const data = JSON.parse(line.slice(5).trim());
+                    yield data as StreamEvent;
+                } catch (e) {
+                    // ignore parse errors
+                }
+            }
+        }
+    }
+}
+
 export const agentApi = {
     getProviders,
     getConfig,
@@ -863,6 +967,8 @@ export const agentApi = {
     testConnection,
     chat,
     chatWithHistory,
+    askDirect,
+    getCases,
     getTools,
     submitToolResult,
     submitToolResults,

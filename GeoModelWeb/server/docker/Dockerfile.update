@@ -4,6 +4,15 @@ FROM geomodel-jupyter:latest
 # 切换到 root 安装
 USER root
 
+# 安装中文字体（解决 matplotlib 中文显示为方块的问题）
+# 清除镜像中残留的代理设置，确保 apt 能访问外网
+ENV http_proxy="" https_proxy="" HTTP_PROXY="" HTTPS_PROXY="" no_proxy="" NO_PROXY=""
+RUN unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY no_proxy NO_PROXY && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends fonts-wqy-microhei fonts-wqy-zenhei && \
+    fc-cache -fv && \
+    rm -rf /var/lib/apt/lists/*
+
 # 复制新的扩展 wheel 文件
 COPY jupyterlab_geomodel-0.1.0-py3-none-any.whl /tmp/
 
@@ -11,6 +20,12 @@ COPY jupyterlab_geomodel-0.1.0-py3-none-any.whl /tmp/
 RUN pip uninstall -y jupyterlab-geomodel && \
     pip install --no-cache-dir /tmp/jupyterlab_geomodel-0.1.0-py3-none-any.whl && \
     rm -f /tmp/*.whl
+
+# 清除 matplotlib 字体缓存，让新字体被识别
+RUN rm -rf /home/jovyan/.cache/matplotlib
+
+# 复制自定义 Jupyter 配置（允许递归删除非空目录等）
+COPY jupyter_server_config.py /etc/jupyter/jupyter_server_config.py
 
 # 切换回 jovyan 用户
 USER ${NB_UID}

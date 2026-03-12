@@ -1,6 +1,6 @@
 /**
  * LLM Settings Panel
- * 用户配置 LLM API 的界面
+ * Configure LLM API for the assistant
  */
 
 import * as React from 'react';
@@ -25,7 +25,7 @@ export const LLMSettings: React.FC<LLMSettingsProps> = ({ onClose, onSaved }) =>
     const [testing, setTesting] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    // 加载配置
+    // Load configuration
     useEffect(() => {
         loadData();
     }, []);
@@ -39,14 +39,14 @@ export const LLMSettings: React.FC<LLMSettingsProps> = ({ onClose, onSaved }) =>
             setProviders(providersData);
             setConfig(configData);
         } catch (error) {
-            console.error('加载配置失败:', error);
-            setMessage({ type: 'error', text: '加载配置失败' });
+            console.error('Failed to load LLM config:', error);
+            setMessage({ type: 'error', text: 'Failed to load configuration' });
         } finally {
             setLoading(false);
         }
     };
 
-    // 选择 Provider 时自动填充默认值
+    // Auto-fill defaults when provider changes
     const handleProviderChange = (provider: string) => {
         const providerInfo = providers[provider];
         setConfig(prev => ({
@@ -54,40 +54,40 @@ export const LLMSettings: React.FC<LLMSettingsProps> = ({ onClose, onSaved }) =>
             provider,
             baseUrl: providerInfo?.baseUrl || '',
             model: providerInfo?.defaultModel || '',
-            // 保留已有的 apiKey
+            // Keep the existing API key
             apiKey: prev.apiKey
         }));
     };
 
-    // 保存配置
+    // Save configuration
     const handleSave = async () => {
         setSaving(true);
         setMessage(null);
         
         try {
             await agentApi.saveConfig(config);
-            setMessage({ type: 'success', text: '配置已保存' });
+            setMessage({ type: 'success', text: 'Configuration saved' });
             onSaved?.();
         } catch (error) {
-            setMessage({ type: 'error', text: '保存失败' });
+            setMessage({ type: 'error', text: 'Failed to save configuration' });
         } finally {
             setSaving(false);
         }
     };
 
-    // 测试连接
+    // Test connection
     const handleTest = async () => {
         setTesting(true);
         setMessage(null);
         
         try {
-            // 先保存配置
+            // Save first to keep backend/runtime in sync
             await agentApi.saveConfig(config);
-            // 再测试
+            // Then test
             const result = await agentApi.testConnection();
-            setMessage({ type: 'success', text: `连接成功！模型: ${result.model}` });
+            setMessage({ type: 'success', text: `Connection successful. Model: ${result.model || 'unknown'}` });
         } catch (error: any) {
-            setMessage({ type: 'error', text: error.message || '连接测试失败' });
+            setMessage({ type: 'error', text: error.message || 'Connection test failed' });
         } finally {
             setTesting(false);
         }
@@ -97,8 +97,8 @@ export const LLMSettings: React.FC<LLMSettingsProps> = ({ onClose, onSaved }) =>
 
     if (loading) {
         return (
-            <div className="llm-settings-panel">
-                <div className="loading">加载中...</div>
+                <div className="llm-settings-panel">
+                <div className="loading">Loading...</div>
             </div>
         );
     }
@@ -106,14 +106,14 @@ export const LLMSettings: React.FC<LLMSettingsProps> = ({ onClose, onSaved }) =>
     return (
         <div className="llm-settings-panel">
             <div className="settings-header">
-                <h3>🤖 LLM 配置</h3>
+                <h3>🤖 LLM Configuration</h3>
                 <button className="close-btn" onClick={onClose}>✕</button>
             </div>
 
             <div className="settings-content">
-                {/* Provider 选择 */}
+                {/* Provider */}
                 <div className="form-group">
-                    <label>LLM 服务商</label>
+                    <label>LLM Provider</label>
                     <select
                         value={config.provider}
                         onChange={(e) => handleProviderChange(e.target.value)}
@@ -135,7 +135,7 @@ export const LLMSettings: React.FC<LLMSettingsProps> = ({ onClose, onSaved }) =>
                         onChange={(e) => setConfig(prev => ({ ...prev, baseUrl: e.target.value }))}
                         placeholder={currentProvider?.baseUrl || 'https://api.openai.com/v1'}
                     />
-                    <small>留空使用默认地址</small>
+                    <small>Leave empty to use the provider default</small>
                 </div>
 
                 {/* API Key */}
@@ -146,57 +146,33 @@ export const LLMSettings: React.FC<LLMSettingsProps> = ({ onClose, onSaved }) =>
                             type="password"
                             value={config.apiKey}
                             onChange={(e) => setConfig(prev => ({ ...prev, apiKey: e.target.value }))}
-                            placeholder={config.hasApiKey ? '***已配置*** (留空保持不变)' : '请输入 API Key'}
+                            placeholder={config.hasApiKey ? '***Configured*** (keep empty to reuse)' : 'Enter API key'}
                         />
                     </div>
                 )}
 
-                {/* 模型选择 */}
-                <div className="form-group">
-                    <label>模型</label>
-                    {currentProvider?.models && currentProvider.models.length > 0 ? (
-                        <select
-                            value={config.model}
-                            onChange={(e) => setConfig(prev => ({ ...prev, model: e.target.value }))}
-                        >
-                            {currentProvider.models.map((model) => (
-                                <option key={model} value={model}>
-                                    {model}
-                                </option>
-                            ))}
-                        </select>
-                    ) : (
-                        <input
-                            type="text"
-                            value={config.model}
-                            onChange={(e) => setConfig(prev => ({ ...prev, model: e.target.value }))}
-                            placeholder="输入模型名称"
-                        />
-                    )}
-                </div>
-
-                {/* 消息提示 */}
+                {/* Feedback */}
                 {message && (
                     <div className={`message ${message.type}`}>
                         {message.type === 'success' ? '✓' : '✕'} {message.text}
                     </div>
                 )}
 
-                {/* 操作按钮 */}
+                {/* Actions */}
                 <div className="button-group">
                     <button
                         className="btn-secondary"
                         onClick={handleTest}
                         disabled={testing || saving}
                     >
-                        {testing ? '测试中...' : '🔗 测试连接'}
+                        {testing ? 'Testing...' : '🔗 Test Connection'}
                     </button>
                     <button
                         className="btn-primary"
                         onClick={handleSave}
                         disabled={saving || testing}
                     >
-                        {saving ? '保存中...' : '💾 保存配置'}
+                        {saving ? 'Saving...' : '💾 Save Configuration'}
                     </button>
                 </div>
             </div>

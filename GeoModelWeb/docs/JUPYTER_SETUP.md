@@ -58,6 +58,23 @@ npm run dev
 4. 点击 "启动 JupyterLab"
 5. 等待容器启动，然后点击 "打开 JupyterLab"
 
+## 7. 永久更新 Jupyter 镜像中的扩展
+
+当你修改了 `jupyterlab-geomodel` 或 Agent UI 后，执行：
+
+```bash
+cd /Users/zms/Documents/Projects/OpenGMS-Jupyter
+./GeoModelWeb/scripts/release-jupyter-agent-image.sh
+```
+
+这个脚本会：
+- 构建前端扩展产物
+- 生成新的 `jupyterlab_geomodel` wheel
+- 替换 `GeoModelWeb/server/docker/` 下的 wheel
+- 重建 `geomodel-jupyter:latest` 镜像
+
+执行后请重启现有 Jupyter 容器，新的界面和能力才会生效。
+
 ## API 端点
 
 ### 认证

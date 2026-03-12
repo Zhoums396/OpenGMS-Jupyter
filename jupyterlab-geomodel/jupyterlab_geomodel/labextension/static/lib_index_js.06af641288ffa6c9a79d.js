@@ -27,10 +27,12 @@ __webpack_require__.r(__webpack_exports__);
  * Agent Panel Widget - 用于左侧边栏
  */
 class AgentWidget extends _jupyterlab_apputils__WEBPACK_IMPORTED_MODULE_0__.ReactWidget {
-    constructor(notebookTracker) {
+    constructor(notebookTracker, app) {
         super();
         this._notebookTracker = null;
+        this._app = null;
         this._notebookTracker = notebookTracker || null;
+        this._app = app || null;
         this.addClass('jp-AgentWidget');
         this.id = 'opengeolab-agent';
         this.title.label = ''; // 不显示文字，只显示图标
@@ -49,7 +51,7 @@ class AgentWidget extends _jupyterlab_apputils__WEBPACK_IMPORTED_MODULE_0__.Reac
      * 渲染 React 组件
      */
     render() {
-        return (react__WEBPACK_IMPORTED_MODULE_1__.createElement(_components_AgentPanel__WEBPACK_IMPORTED_MODULE_2__.AgentPanel, { notebookTracker: this._notebookTracker || undefined }));
+        return (react__WEBPACK_IMPORTED_MODULE_1__.createElement(_components_AgentPanel__WEBPACK_IMPORTED_MODULE_2__.AgentPanel, { notebookTracker: this._notebookTracker || undefined, app: this._app || undefined }));
     }
 }
 
@@ -73,10 +75,12 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _services_agentApi__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../services/agentApi */ "./lib/services/agentApi.js");
 /* harmony import */ var _LLMSettings__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./LLMSettings */ "./lib/components/LLMSettings.js");
 /* harmony import */ var _ChatHistory__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./ChatHistory */ "./lib/components/ChatHistory.js");
+/* harmony import */ var _utils_markdownRenderer__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ../utils/markdownRenderer */ "./lib/utils/markdownRenderer.js");
 /**
  * Agent Chat Panel
  * AI 助手聊天界面，放置在左侧边栏
  */
+
 
 
 
@@ -119,7 +123,7 @@ function getAuthHeaders() {
     }
     return headers;
 }
-const AgentPanel = ({ notebookTracker }) => {
+const AgentPanel = ({ notebookTracker, app }) => {
     const [messages, setMessages] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
     const [input, setInput] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
     const [isLoading, setIsLoading] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
@@ -128,14 +132,34 @@ const AgentPanel = ({ notebookTracker }) => {
     const [hasConfig, setHasConfig] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
     const [streamingContent, setStreamingContent] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
     const [executedTools, setExecutedTools] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
-    const [expandedThinking, setExpandedThinking] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(new Set()); // 跟踪哪些消息的思考过程是展开的
+    const [smartCases, setSmartCases] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
+    const [isLoadingCases, setIsLoadingCases] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
+    const [expandedThinking, setExpandedThinking] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(new Set());
     // 历史对话相关状态
     const [showHistory, setShowHistory] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
     const [currentConversationId, setCurrentConversationId] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null);
     const [userId, setUserId] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('default_user');
-    const [conversationTitle, setConversationTitle] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('新对话');
+    const [conversationTitle, setConversationTitle] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('New Chat');
+    // ThoughtChain 跟踪
+    const [activeThoughtSteps, setActiveThoughtSteps] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
+    const thoughtStepsRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)([]);
+    const thoughtStepIdRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(0);
+    const thoughtChainStartRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(0);
+    // Model 选择器
+    const [currentModel, setCurrentModel] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('');
+    const [availableModels, setAvailableModels] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
+    const [showModelDropdown, setShowModelDropdown] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
+    // Chat mode: 'agent' (full tool loop) or 'ask' (simple Q&A)
+    const [chatMode, setChatMode] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)('agent');
+    // File upload
+    const [attachedFiles, setAttachedFiles] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
+    const [isUploading, setIsUploading] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
+    const fileInputRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
     const messagesEndRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
     const inputRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
+    const abortControllerRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
+    // 跟踪 agent 最后操作的 cell 索引，防止用户点击其他 cell 导致插入位置错乱
+    const lastAgentCellIndexRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(-1);
     // 初始化用户ID（从 localStorage 或生成）
     (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
         const storedUserId = localStorage.getItem('geomodel_user_id');
@@ -179,9 +203,182 @@ const AgentPanel = ({ notebookTracker }) => {
             return newSet;
         });
     };
+    // ==================== ThoughtChain helpers ====================
+    const addThoughtStep = (title) => {
+        const id = ++thoughtStepIdRef.current;
+        const step = { id, title, status: 'running', startTime: Date.now() };
+        thoughtStepsRef.current = [...thoughtStepsRef.current, step];
+        setActiveThoughtSteps([...thoughtStepsRef.current]);
+        return id;
+    };
+    const completeThoughtStep = (id) => {
+        thoughtStepsRef.current = thoughtStepsRef.current.map(s => s.id === id ? { ...s, status: 'done', endTime: Date.now() } : s);
+        setActiveThoughtSteps([...thoughtStepsRef.current]);
+    };
+    const failThoughtStep = (id) => {
+        thoughtStepsRef.current = thoughtStepsRef.current.map(s => s.id === id ? { ...s, status: 'error', endTime: Date.now() } : s);
+        setActiveThoughtSteps([...thoughtStepsRef.current]);
+    };
+    const resetThoughtChain = () => {
+        thoughtStepsRef.current = [];
+        thoughtStepIdRef.current = 0;
+        thoughtChainStartRef.current = Date.now();
+        setActiveThoughtSteps([]);
+    };
+    // ==================== Model selector ====================
+    const loadModelsData = async () => {
+        var _a;
+        try {
+            const [config, providers] = await Promise.all([
+                _services_agentApi__WEBPACK_IMPORTED_MODULE_2__.agentApi.getConfig(),
+                _services_agentApi__WEBPACK_IMPORTED_MODULE_2__.agentApi.getProviders()
+            ]);
+            setCurrentModel(config.model || '');
+            const models = [];
+            // Add current model first
+            if (config.model) {
+                models.push({ provider: config.provider, model: config.model, label: config.model });
+            }
+            // Add custom models from config
+            if ((_a = config.customModels) === null || _a === void 0 ? void 0 : _a.length) {
+                config.customModels.forEach(m => {
+                    if (!models.find(e => e.model === m)) {
+                        models.push({ provider: config.provider, model: m, label: m });
+                    }
+                });
+            }
+            // Add provider models
+            Object.entries(providers).forEach(([key, provider]) => {
+                provider.models.forEach(m => {
+                    if (!models.find(e => e.model === m)) {
+                        models.push({ provider: key, model: m, label: m });
+                    }
+                });
+            });
+            setAvailableModels(models);
+        }
+        catch (e) {
+            console.warn('[Agent] Failed to load models:', e);
+        }
+    };
+    const handleModelChange = async (model) => {
+        setCurrentModel(model);
+        setShowModelDropdown(false);
+        try {
+            // Find the provider that owns this model and sync provider/baseUrl
+            const match = availableModels.find(m => m.model === model);
+            if (match && match.provider) {
+                await _services_agentApi__WEBPACK_IMPORTED_MODULE_2__.agentApi.saveConfig({ model, provider: match.provider });
+            }
+            else {
+                await _services_agentApi__WEBPACK_IMPORTED_MODULE_2__.agentApi.saveConfig({ model });
+            }
+        }
+        catch (e) {
+            console.warn('[Agent] Failed to save model selection:', e);
+        }
+    };
+    // ==================== File upload ====================
+    /**
+     * Upload file to Jupyter workspace via Contents API.
+     * Text files use 'text' format, binary files use 'base64' format.
+     */
+    const uploadToJupyter = async (file) => {
+        var _a;
+        try {
+            const isText = /\.(txt|csv|tsv|json|geojson|py|r|md|yaml|yml|xml|html|js|ts|toml|ini|cfg|log|sh|bat|sql|tex|bib)$/i.test(file.name);
+            let body;
+            if (isText) {
+                const text = await file.text();
+                body = {
+                    type: 'file',
+                    format: 'text',
+                    name: file.name,
+                    content: text
+                };
+            }
+            else {
+                // Binary file → base64
+                const buffer = await file.arrayBuffer();
+                const bytes = new Uint8Array(buffer);
+                let binary = '';
+                for (let i = 0; i < bytes.length; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                const b64 = btoa(binary);
+                body = {
+                    type: 'file',
+                    format: 'base64',
+                    name: file.name,
+                    content: b64
+                };
+            }
+            // Use Jupyter Contents API: PUT /api/contents/{path}
+            const jupyterBase = window.location.origin;
+            const basePath = ((_a = window.jupyterlab) === null || _a === void 0 ? void 0 : _a.baseUrl) || '/';
+            const apiUrl = `${jupyterBase}${basePath}api/contents/${encodeURIComponent(file.name)}`;
+            // Get XSRF token from cookie
+            const xsrfMatch = document.cookie.match(/(?:^|;\s*)_xsrf=([^;]*)/);
+            const headers = { 'Content-Type': 'application/json' };
+            if (xsrfMatch) {
+                headers['X-XSRFToken'] = decodeURIComponent(xsrfMatch[1]);
+            }
+            const resp = await fetch(apiUrl, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify(body)
+            });
+            if (!resp.ok) {
+                console.error('[Upload] Jupyter API error:', resp.status, await resp.text());
+                return false;
+            }
+            console.log('[Upload] Uploaded to Jupyter workspace:', file.name);
+            return true;
+        }
+        catch (e) {
+            console.error('[Upload] Failed:', e);
+            return false;
+        }
+    };
+    const handleFileSelect = async (e) => {
+        const files = e.target.files;
+        if (!files || files.length === 0)
+            return;
+        const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+        setIsUploading(true);
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (file.size > MAX_SIZE) {
+                alert(`文件 "${file.name}" 超过 50MB 上限`);
+                continue;
+            }
+            // Actually upload to Jupyter workspace
+            const success = await uploadToJupyter(file);
+            setAttachedFiles(prev => [...prev, {
+                    name: file.name,
+                    size: file.size,
+                    uploaded: success
+                }]);
+        }
+        setIsUploading(false);
+        if (fileInputRef.current)
+            fileInputRef.current.value = '';
+    };
+    const removeAttachedFile = (index) => {
+        setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+    };
+    const formatFileSize = (bytes) => {
+        if (bytes < 1024)
+            return bytes + ' B';
+        if (bytes < 1024 * 1024)
+            return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    };
     // 检查是否已配置 LLM
     (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
         checkConfig();
+        loadSmartCases();
+        loadModelsData();
     }, []);
     const checkConfig = async () => {
         try {
@@ -190,6 +387,20 @@ const AgentPanel = ({ notebookTracker }) => {
         }
         catch (e) {
             setHasConfig(false);
+        }
+    };
+    const loadSmartCases = async () => {
+        try {
+            setIsLoadingCases(true);
+            const cases = await _services_agentApi__WEBPACK_IMPORTED_MODULE_2__.agentApi.getCases();
+            setSmartCases(cases.slice(0, 3));
+        }
+        catch (e) {
+            console.warn('[Agent] Failed to load smart cases:', e);
+            setSmartCases([]);
+        }
+        finally {
+            setIsLoadingCases(false);
         }
     };
     // 自动滚动到底部
@@ -228,6 +439,26 @@ const AgentPanel = ({ notebookTracker }) => {
         }
         return '';
     }, [notebookTracker]);
+    const getWorkspaceUserName = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const user = params.get('user') || params.get('userName');
+            if (user) {
+                return user;
+            }
+        }
+        const userInfo = localStorage.getItem('geomodel_user');
+        if (userInfo) {
+            try {
+                const parsed = JSON.parse(userInfo);
+                return parsed.login || parsed.userName || parsed.username || '';
+            }
+            catch (e) {
+                return '';
+            }
+        }
+        return '';
+    }, []);
     // 扫描工作目录数据
     const scanWorkspaceData = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(async () => {
         try {
@@ -246,6 +477,8 @@ const AgentPanel = ({ notebookTracker }) => {
     // 获取当前 Notebook 上下文（包含工作目录数据）
     const getNotebookContext = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(async () => {
         const context = {};
+        context.projectName = getProjectName();
+        context.userName = getWorkspaceUserName();
         if (notebookTracker === null || notebookTracker === void 0 ? void 0 : notebookTracker.currentWidget) {
             const notebook = notebookTracker.currentWidget;
             context.notebookName = notebook.title.label;
@@ -270,42 +503,316 @@ const AgentPanel = ({ notebookTracker }) => {
             context.workspaceFiles = workspaceFiles;
         }
         return context;
-    }, [notebookTracker, workspaceFiles, scanWorkspaceData]);
+    }, [notebookTracker, workspaceFiles, scanWorkspaceData, getProjectName, getWorkspaceUserName]);
     // 执行工具调用
     const executeToolCall = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(async (tool) => {
+        var _a, _b, _c, _d, _e, _f, _g, _h;
         console.log('[Agent] Executing tool:', tool.name, tool.arguments);
-        const notebook = notebookTracker === null || notebookTracker === void 0 ? void 0 : notebookTracker.currentWidget;
+        let notebook = notebookTracker === null || notebookTracker === void 0 ? void 0 : notebookTracker.currentWidget;
         try {
             const args = JSON.parse(tool.arguments || '{}');
-            // 前端执行的工具（notebook 操作）
+            // 如果没有打开的 notebook，自动创建并打开一个
             if (!notebook) {
-                return '错误: 没有打开的 Notebook，请先打开或创建一个 Notebook';
+                if (app) {
+                    console.log('[Agent] No notebook open, auto-creating one...');
+                    try {
+                        // 1. 创建 notebook 文件
+                        const model = await app.commands.execute('docmanager:new-untitled', {
+                            type: 'notebook'
+                        });
+                        // 2. 用 docmanager:open 打开它
+                        if (model && model.path) {
+                            console.log('[Agent] Created notebook file:', model.path);
+                            await app.commands.execute('docmanager:open', {
+                                path: model.path,
+                                factory: 'Notebook',
+                                kernel: { name: 'python3' }
+                            });
+                        }
+                        // 等待 notebook tracker 捕获到新的 notebook
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        notebook = notebookTracker === null || notebookTracker === void 0 ? void 0 : notebookTracker.currentWidget;
+                        if (!notebook) {
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            notebook = notebookTracker === null || notebookTracker === void 0 ? void 0 : notebookTracker.currentWidget;
+                        }
+                        if (notebook) {
+                            await notebook.sessionContext.ready;
+                            console.log('[Agent] Notebook opened and ready:', notebook.title.label);
+                        }
+                    }
+                    catch (createErr) {
+                        console.error('[Agent] Failed to auto-create notebook:', createErr);
+                    }
+                }
+                if (!notebook) {
+                    return { result: 'Error: No notebook is currently open and auto-creation failed. Please manually create a notebook in JupyterLab (File → New → Notebook).' };
+                }
             }
             switch (tool.name) {
+                case 'edit_code_cell': {
+                    const cellIndex = args.cell_index;
+                    const newCode = args.new_code || '';
+                    const oldCode = args.old_code || '';
+                    const replacementCode = args.replacement_code || '';
+                    // Validate cell_index
+                    const totalCells = notebook.content.widgets.length;
+                    if (cellIndex === undefined || cellIndex === null || cellIndex < 0 || cellIndex >= totalCells) {
+                        return { result: `Error: Invalid cell_index ${cellIndex}. Notebook has ${totalCells} cells (0-${totalCells - 1}).` };
+                    }
+                    const targetCell = notebook.content.widgets[cellIndex];
+                    if (!targetCell || !targetCell.model) {
+                        return { result: `Error: Cannot access cell at index ${cellIndex}.` };
+                    }
+                    const currentSource = targetCell.model.sharedModel.getSource();
+                    let updatedCode;
+                    if (oldCode && replacementCode !== undefined) {
+                        // Incremental edit: replace old_code with replacement_code
+                        if (!currentSource.includes(oldCode)) {
+                            return { result: `Error: Could not find the specified old_code in cell ${cellIndex}. The cell content may have changed. Current cell content:\n${currentSource.slice(0, 500)}` };
+                        }
+                        updatedCode = currentSource.replace(oldCode, replacementCode);
+                    }
+                    else if (newCode) {
+                        // Full replacement
+                        updatedCode = newCode;
+                    }
+                    else {
+                        return { result: 'Error: Must provide either new_code (full replace) or old_code+replacement_code (incremental edit).' };
+                    }
+                    // Apply the edit
+                    targetCell.model.sharedModel.setSource(updatedCode);
+                    // Select the cell (but do NOT update lastAgentCellIndexRef — editing
+                    // an existing cell should not change where the next NEW cell gets inserted)
+                    notebook.content.activeCellIndex = cellIndex;
+                    // Re-execute the cell
+                    await _jupyterlab_notebook__WEBPACK_IMPORTED_MODULE_1__.NotebookActions.run(notebook.content, notebook.sessionContext);
+                    // Wait for output
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    // Capture output (same logic as add_code_cell)
+                    let cellOutput = '';
+                    const editCapturedImages = [];
+                    try {
+                        const cellModel = targetCell.model;
+                        const outputs = cellModel.outputs;
+                        if (outputs && outputs.length > 0) {
+                            const outputParts = [];
+                            const MAX_OUTPUT_CHARS = 3000;
+                            let totalChars = 0;
+                            for (let i = 0; i < outputs.length && totalChars < MAX_OUTPUT_CHARS; i++) {
+                                const output = outputs.get(i);
+                                const json = output.toJSON();
+                                if (json.output_type === 'error') {
+                                    const errorMsg = `ERROR - ${json.ename}: ${json.evalue}`;
+                                    outputParts.push(errorMsg);
+                                    if (json.traceback && Array.isArray(json.traceback)) {
+                                        const tb = json.traceback.map((line) => line.replace(/\u001b\[[0-9;]*m/g, ''));
+                                        outputParts.push(tb.slice(-5).join('\n'));
+                                    }
+                                    totalChars += errorMsg.length;
+                                }
+                                else if (json.output_type === 'stream') {
+                                    const text = typeof json.text === 'string' ? json.text : (json.text || []).join('');
+                                    if (text.trim()) {
+                                        const truncated = text.length > 1000 ? text.slice(0, 1000) + '...(truncated)' : text;
+                                        outputParts.push(`[${json.name || 'stdout'}]: ${truncated}`);
+                                        totalChars += truncated.length;
+                                    }
+                                }
+                                else if (json.output_type === 'execute_result') {
+                                    const textData = ((_a = json.data) === null || _a === void 0 ? void 0 : _a['text/plain']) || '';
+                                    if (textData) {
+                                        const truncated = textData.length > 1000 ? textData.slice(0, 1000) + '...(truncated)' : textData;
+                                        outputParts.push(`[result]: ${truncated}`);
+                                        totalChars += truncated.length;
+                                    }
+                                }
+                                else if (json.output_type === 'display_data') {
+                                    if ((_b = json.data) === null || _b === void 0 ? void 0 : _b['image/png']) {
+                                        outputParts.push('[display]: Chart/image generated — attached for visual inspection');
+                                        // 捕获 base64 PNG 用于视觉检测（限制 500KB）
+                                        const pngBase64 = json.data['image/png'];
+                                        if (pngBase64 && pngBase64.length < 500000) {
+                                            editCapturedImages.push(pngBase64);
+                                            console.log(`[Agent] Captured image for visual inspection (${Math.round(pngBase64.length / 1024)}KB)`);
+                                        }
+                                    }
+                                    else if ((_c = json.data) === null || _c === void 0 ? void 0 : _c['image/svg+xml']) {
+                                        outputParts.push('[display]: SVG image generated successfully');
+                                    }
+                                    else if ((_d = json.data) === null || _d === void 0 ? void 0 : _d['text/plain']) {
+                                        const truncated = json.data['text/plain'].length > 500 ? json.data['text/plain'].slice(0, 500) + '...(truncated)' : json.data['text/plain'];
+                                        outputParts.push(`[display]: ${truncated}`);
+                                        totalChars += truncated.length;
+                                    }
+                                }
+                            }
+                            if (outputParts.length > 0) {
+                                cellOutput = '\n--- Cell Output ---\n' + outputParts.join('\n');
+                            }
+                        }
+                    }
+                    catch (outputErr) {
+                        console.warn('[Agent] Failed to capture cell output:', outputErr);
+                    }
+                    setExecutedTools(prev => [...prev, `Edited cell [${cellIndex}]`]);
+                    const hasError = cellOutput.includes('ERROR -');
+                    const hasWarning = cellOutput.includes('Warning:') || cellOutput.includes('WARNING');
+                    const hasCJKIssue = cellOutput.includes('missing from current font') || cellOutput.includes('CJK');
+                    let statusMsg;
+                    if (hasError) {
+                        statusMsg = `Cell [${cellIndex}] edited and re-executed with ERRORS. You MUST fix these errors.`;
+                    }
+                    else if (hasCJKIssue) {
+                        statusMsg = `Cell [${cellIndex}] edited and re-executed but has CJK FONT WARNINGS. Add font config before plotting.`;
+                    }
+                    else if (hasWarning) {
+                        statusMsg = `Cell [${cellIndex}] edited and re-executed with WARNINGS. Review if needed.`;
+                    }
+                    else {
+                        statusMsg = `Cell [${cellIndex}] edited and re-executed successfully.`;
+                    }
+                    const editResultText = cellOutput ? `${statusMsg}${cellOutput}` : statusMsg;
+                    return { result: editResultText, images: editCapturedImages.length > 0 ? editCapturedImages : undefined };
+                }
                 case 'add_code_cell': {
                     const code = args.code || '';
-                    // 获取当前单元格索引
-                    const activeCellIndex = notebook.content.activeCellIndex;
-                    // 在当前位置后插入新的代码单元格
+                    // 智能确定插入位置：优先使用 agent 上次插入的位置，防止用户点击其他 cell 导致错位
+                    const totalCells = notebook.content.widgets.length;
+                    let targetIndex;
+                    if (lastAgentCellIndexRef.current >= 0 && lastAgentCellIndexRef.current < totalCells) {
+                        targetIndex = lastAgentCellIndexRef.current;
+                    }
+                    else {
+                        // 首次插入或 ref 无效：插入到 notebook 最末尾
+                        targetIndex = totalCells - 1;
+                    }
+                    console.log(`[Agent] add_code_cell: inserting after cell ${targetIndex} (total=${totalCells}, lastAgentRef=${lastAgentCellIndexRef.current}, userActive=${notebook.content.activeCellIndex})`);
+                    // 先将活动 cell 设为目标位置，再插入
+                    notebook.content.activeCellIndex = targetIndex;
+                    const activeCellIndex = targetIndex;
                     _jupyterlab_notebook__WEBPACK_IMPORTED_MODULE_1__.NotebookActions.insertBelow(notebook.content);
                     // 等待一下让 UI 更新
                     await new Promise(resolve => setTimeout(resolve, 100));
                     // 获取新插入的单元格
                     const newCellIndex = activeCellIndex + 1;
                     const newCell = notebook.content.widgets[newCellIndex];
+                    let cellOutput = '';
+                    const capturedImages = [];
                     if (newCell && newCell.model) {
                         newCell.model.sharedModel.setSource(code);
-                        // 确保选中新单元格
+                        // 确保选中新单元格并更新 agent 追踪索引
                         notebook.content.activeCellIndex = newCellIndex;
+                        lastAgentCellIndexRef.current = newCellIndex;
                         // 自动运行插入的代码
-                        await _jupyterlab_notebook__WEBPACK_IMPORTED_MODULE_1__.NotebookActions.run(notebook.content, notebook.sessionContext);
+                        const runResult = await _jupyterlab_notebook__WEBPACK_IMPORTED_MODULE_1__.NotebookActions.run(notebook.content, notebook.sessionContext);
+                        // 等待输出完全更新（绘图等较慢操作需要更多时间）
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        // 捕获 cell 执行输出（包括错误）
+                        try {
+                            const cellModel = newCell.model;
+                            const outputs = cellModel.outputs;
+                            if (outputs && outputs.length > 0) {
+                                const outputParts = [];
+                                const MAX_OUTPUT_CHARS = 3000;
+                                let totalChars = 0;
+                                for (let i = 0; i < outputs.length && totalChars < MAX_OUTPUT_CHARS; i++) {
+                                    const output = outputs.get(i);
+                                    const json = output.toJSON();
+                                    if (json.output_type === 'error') {
+                                        // 捕获错误信息
+                                        const errorMsg = `ERROR - ${json.ename}: ${json.evalue}`;
+                                        outputParts.push(errorMsg);
+                                        // 包含 traceback 的最后几行
+                                        if (json.traceback && Array.isArray(json.traceback)) {
+                                            const tb = json.traceback.map((line) => line.replace(/\u001b\[[0-9;]*m/g, '') // 去除 ANSI 颜色码
+                                            );
+                                            const tbText = tb.slice(-5).join('\n');
+                                            outputParts.push(tbText);
+                                        }
+                                        totalChars += errorMsg.length;
+                                    }
+                                    else if (json.output_type === 'stream') {
+                                        const text = typeof json.text === 'string' ? json.text : (json.text || []).join('');
+                                        if (text.trim()) {
+                                            const truncated = text.length > 1000 ? text.slice(0, 1000) + '...(truncated)' : text;
+                                            outputParts.push(`[${json.name || 'stdout'}]: ${truncated}`);
+                                            totalChars += truncated.length;
+                                        }
+                                    }
+                                    else if (json.output_type === 'execute_result') {
+                                        const textData = ((_e = json.data) === null || _e === void 0 ? void 0 : _e['text/plain']) || '';
+                                        if (textData) {
+                                            const truncated = textData.length > 1000 ? textData.slice(0, 1000) + '...(truncated)' : textData;
+                                            outputParts.push(`[result]: ${truncated}`);
+                                            totalChars += truncated.length;
+                                        }
+                                    }
+                                    else if (json.output_type === 'display_data') {
+                                        // 图表等：捕获 base64 PNG 用于视觉检测
+                                        if ((_f = json.data) === null || _f === void 0 ? void 0 : _f['image/png']) {
+                                            outputParts.push('[display]: Chart/image generated — attached for visual inspection');
+                                            const pngBase64 = json.data['image/png'];
+                                            if (pngBase64 && pngBase64.length < 500000) {
+                                                capturedImages.push(pngBase64);
+                                                console.log(`[Agent] Captured image for visual inspection (${Math.round(pngBase64.length / 1024)}KB)`);
+                                            }
+                                        }
+                                        else if ((_g = json.data) === null || _g === void 0 ? void 0 : _g['image/svg+xml']) {
+                                            outputParts.push('[display]: SVG image generated successfully');
+                                        }
+                                        else if ((_h = json.data) === null || _h === void 0 ? void 0 : _h['text/plain']) {
+                                            const truncated = json.data['text/plain'].length > 500 ? json.data['text/plain'].slice(0, 500) + '...(truncated)' : json.data['text/plain'];
+                                            outputParts.push(`[display]: ${truncated}`);
+                                            totalChars += truncated.length;
+                                        }
+                                    }
+                                }
+                                if (outputParts.length > 0) {
+                                    cellOutput = '\n--- Cell Output ---\n' + outputParts.join('\n');
+                                }
+                            }
+                        }
+                        catch (outputErr) {
+                            console.warn('[Agent] Failed to capture cell output:', outputErr);
+                        }
                     }
-                    setExecutedTools(prev => [...prev, `📝 添加并运行代码单元格`]);
-                    return '成功添加并运行代码单元格';
+                    setExecutedTools(prev => [...prev, 'Inserted and executed code cell']);
+                    // 返回包含执行输出的结果（含 cell_index 以便后续 edit_code_cell 使用）
+                    const hasError = cellOutput.includes('ERROR -');
+                    const hasWarning = cellOutput.includes('Warning:') || cellOutput.includes('WARNING');
+                    const hasCJKIssue = cellOutput.includes('missing from current font') || cellOutput.includes('CJK');
+                    const cellIdxInfo = `[cell_index=${newCellIndex}]`;
+                    let statusMsg;
+                    if (hasError) {
+                        statusMsg = `Code cell ${cellIdxInfo} inserted and executed with ERRORS. Use edit_code_cell(cell_index=${newCellIndex}, ...) to fix the code in-place.`;
+                    }
+                    else if (hasCJKIssue) {
+                        statusMsg = `Code cell ${cellIdxInfo} executed but has CJK FONT WARNINGS — Chinese/Japanese/Korean characters will show as boxes (□□□) in plots. Use edit_code_cell(cell_index=${newCellIndex}, ...) to add font configuration.`;
+                    }
+                    else if (hasWarning) {
+                        statusMsg = `Code cell ${cellIdxInfo} executed with WARNINGS. Review and fix if needed using edit_code_cell(cell_index=${newCellIndex}, ...).`;
+                    }
+                    else {
+                        statusMsg = `Code cell ${cellIdxInfo} inserted and executed successfully.`;
+                    }
+                    const addResultText = cellOutput ? `${statusMsg}${cellOutput}` : statusMsg;
+                    return { result: addResultText, images: capturedImages.length > 0 ? capturedImages : undefined };
                 }
                 case 'add_markdown_cell': {
                     const content = args.content || '';
-                    const activeCellIndex = notebook.content.activeCellIndex;
+                    // 智能确定插入位置：优先使用 agent 上次插入的位置
+                    const mdTotalCells = notebook.content.widgets.length;
+                    let mdTargetIndex;
+                    if (lastAgentCellIndexRef.current >= 0 && lastAgentCellIndexRef.current < mdTotalCells) {
+                        mdTargetIndex = lastAgentCellIndexRef.current;
+                    }
+                    else {
+                        mdTargetIndex = mdTotalCells - 1;
+                    }
+                    console.log(`[Agent] add_markdown_cell: inserting after cell ${mdTargetIndex} (total=${mdTotalCells}, lastAgentRef=${lastAgentCellIndexRef.current})`);
+                    notebook.content.activeCellIndex = mdTargetIndex;
+                    const activeCellIndex = mdTargetIndex;
                     _jupyterlab_notebook__WEBPACK_IMPORTED_MODULE_1__.NotebookActions.insertBelow(notebook.content);
                     await new Promise(resolve => setTimeout(resolve, 100));
                     const newCellIndex = activeCellIndex + 1;
@@ -315,77 +822,125 @@ const AgentPanel = ({ notebookTracker }) => {
                     const newCell = notebook.content.widgets[newCellIndex];
                     if (newCell && newCell.model) {
                         newCell.model.sharedModel.setSource(content);
+                        // 更新 agent 追踪索引
+                        lastAgentCellIndexRef.current = newCellIndex;
                         // 渲染 markdown
                         await _jupyterlab_notebook__WEBPACK_IMPORTED_MODULE_1__.NotebookActions.run(notebook.content, notebook.sessionContext);
                     }
-                    setExecutedTools(prev => [...prev, `📄 添加 Markdown 单元格`]);
-                    return '成功添加 Markdown 单元格';
+                    setExecutedTools(prev => [...prev, 'Inserted Markdown cell']);
+                    return { result: 'Markdown cell inserted' };
                 }
                 default:
                     console.log('[Agent] Unknown tool:', tool.name);
-                    return `工具 ${tool.name} 暂不支持`;
+                    return { result: `Tool ${tool.name} is not supported in frontend` };
             }
         }
         catch (e) {
             console.error('[Agent] Tool execution error:', e);
-            return `工具执行错误: ${e.message}`;
+            return { result: `Tool execution failed: ${e.message}` };
         }
-    }, [notebookTracker]);
+    }, [notebookTracker, app]);
     // 发送消息
-    const handleSend = async () => {
-        if (!input.trim() || isLoading)
+    const handleSend = async (overrideInput) => {
+        const nextInput = (overrideInput !== null && overrideInput !== void 0 ? overrideInput : input).trim();
+        if (!nextInput || isLoading)
             return;
+        // Build message content with uploaded file info
+        let messageContent = nextInput;
+        if (attachedFiles.length > 0) {
+            const uploadedFiles = attachedFiles.filter(f => f.uploaded);
+            if (uploadedFiles.length > 0) {
+                const fileList = uploadedFiles.map(f => `  - ${f.name} (${formatFileSize(f.size)})`).join('\n');
+                messageContent = nextInput + `\n\n[用户已上传以下文件到项目工作目录:]\n${fileList}\n[请在分析中使用这些文件，文件路径为工作目录下的文件名]`;
+            }
+        }
         const userMessage = {
             role: 'user',
-            content: input.trim(),
+            content: nextInput,
             timestamp: new Date()
         };
         setMessages(prev => [...prev, userMessage]);
-        const currentInput = input.trim();
         setInput('');
+        setAttachedFiles([]);
         setIsLoading(true);
         setStreamingContent('');
         setExecutedTools([]);
+        resetThoughtChain();
+        // 重置 agent cell 追踪（新对话从 notebook 末尾开始）
+        lastAgentCellIndexRef.current = -1;
         try {
-            // 异步获取上下文（包括工作目录扫描）
-            const context = await getNotebookContext();
-            let currentSessionId = sessionId;
-            // 如果是新对话，先创建对话记录
-            let convId = currentConversationId;
-            if (!convId) {
-                try {
-                    // 根据第一条消息生成标题
-                    const title = currentInput.length > 30
-                        ? currentInput.substring(0, 30) + '...'
-                        : currentInput;
-                    const newConv = await _services_agentApi__WEBPACK_IMPORTED_MODULE_2__.agentApi.createConversation(userId, title);
-                    convId = newConv.id;
-                    setCurrentConversationId(convId);
-                    setConversationTitle(title);
+            if (chatMode === 'ask') {
+                // Ask mode: direct LLM streaming, no tools
+                const history = messages
+                    .filter(m => m.role === 'user' || m.role === 'assistant')
+                    .slice(-10)
+                    .map(m => ({ role: m.role, content: m.content }));
+                let fullContent = '';
+                const eventStream = _services_agentApi__WEBPACK_IMPORTED_MODULE_2__.agentApi.askDirect(messageContent, history);
+                for await (const event of eventStream) {
+                    switch (event.type) {
+                        case 'text':
+                            fullContent += event.content || '';
+                            setStreamingContent(fullContent);
+                            break;
+                        case 'error':
+                            throw new Error(event.error);
+                        case 'done':
+                            break;
+                    }
                 }
-                catch (e) {
-                    console.warn('[Agent] Failed to create conversation:', e);
+                if (fullContent) {
+                    setMessages(prev => [...prev, {
+                            role: 'assistant',
+                            content: fullContent,
+                            timestamp: new Date()
+                        }]);
                 }
             }
-            // Agent 循环：处理工具调用直到没有更多工具调用
-            await processAgentLoop(userMessage.content, context, currentSessionId, convId);
+            else {
+                // Agent mode: full tool loop
+                const context = await getNotebookContext();
+                let currentSessionId = sessionId;
+                let convId = currentConversationId;
+                if (!convId) {
+                    try {
+                        const title = nextInput.length > 30
+                            ? nextInput.substring(0, 30) + '...'
+                            : nextInput;
+                        const newConv = await _services_agentApi__WEBPACK_IMPORTED_MODULE_2__.agentApi.createConversation(userId, title);
+                        convId = newConv.id;
+                        setCurrentConversationId(convId);
+                        setConversationTitle(title);
+                    }
+                    catch (e) {
+                        console.warn('[Agent] Failed to create conversation:', e);
+                    }
+                }
+                await processAgentLoop(messageContent, context, currentSessionId, convId);
+            }
         }
         catch (error) {
             console.error('Chat error:', error);
             setMessages(prev => [...prev, {
                     role: 'assistant',
-                    content: `❌ 错误: ${error.message}`,
+                    content: `Error: ${error.message}`,
                     timestamp: new Date()
                 }]);
         }
         finally {
             setIsLoading(false);
             setStreamingContent('');
+            setActiveThoughtSteps([]);
         }
     };
-    // Agent 循环处理函数
+    const handleRunSmartCase = (agentCase) => {
+        if (isLoading)
+            return;
+        handleSend(agentCase.starterPrompt);
+    };
+    // Agent 循环处理函数 (with ThoughtChain tracking)
     const processAgentLoop = async (initialMessage, context, currentSessionId, conversationId = null, isToolResult = false, toolResultsToSubmit) => {
-        var _a;
+        var _a, _b;
         console.log('[Agent] processAgentLoop called:', {
             initialMessage: initialMessage.substring(0, 50),
             currentSessionId,
@@ -395,21 +950,21 @@ const AgentPanel = ({ notebookTracker }) => {
         });
         let fullContent = '';
         const pendingToolCalls = [];
+        let thinkingStepId = null;
         try {
-            // 选择使用 chat 还是 submitToolResults
             const eventStream = isToolResult && currentSessionId && toolResultsToSubmit
                 ? _services_agentApi__WEBPACK_IMPORTED_MODULE_2__.agentApi.submitToolResults(currentSessionId, toolResultsToSubmit)
                 : _services_agentApi__WEBPACK_IMPORTED_MODULE_2__.agentApi.chat(initialMessage, currentSessionId || undefined, context);
-            console.log('[Agent] Starting event stream, isToolResult:', isToolResult);
             for await (const event of eventStream) {
-                console.log('[Agent] Event received:', event.type);
                 switch (event.type) {
                     case 'text':
+                        if (!thinkingStepId) {
+                            thinkingStepId = addThoughtStep(isToolResult ? 'Analyzing results' : 'Thinking');
+                        }
                         fullContent += event.content || '';
                         setStreamingContent(fullContent);
                         break;
                     case 'tool_call':
-                        console.log('[Agent] Tool call received:', event.tool);
                         if (event.tool) {
                             pendingToolCalls.push(event.tool);
                         }
@@ -419,58 +974,49 @@ const AgentPanel = ({ notebookTracker }) => {
                             currentSessionId = event.sessionId;
                             setSessionId(event.sessionId);
                         }
-                        // 获取要执行的工具
+                        // Complete thinking step
+                        if (thinkingStepId) {
+                            completeThoughtStep(thinkingStepId);
+                            thinkingStepId = null;
+                        }
                         const toolsToExecute = (event.toolCalls && event.toolCalls.length > 0)
                             ? event.toolCalls
                             : pendingToolCalls;
-                        // 如果有工具需要执行
                         if (toolsToExecute.length > 0) {
-                            // 保存当前的思考内容（用于后续折叠显示）
-                            const thinkingText = fullContent.trim();
-                            // 清空流式内容显示
                             setStreamingContent('');
                             fullContent = '';
-                            // 逐个执行工具并立即显示进度
+                            // Execute each tool with ThoughtChain tracking
                             const toolResultsArray = [];
-                            const executedActionNames = [];
-                            const executedToolCalls = [];
                             for (const tool of toolsToExecute) {
                                 const toolDisplayName = getToolDisplayName(tool.name);
-                                // 立即显示正在执行的工具
-                                setMessages(prev => [...prev, {
-                                        role: 'assistant',
-                                        content: `⏳ 正在执行: ${toolDisplayName}...`,
-                                        timestamp: new Date()
-                                    }]);
-                                // 执行工具
-                                const result = await executeToolCall(tool);
-                                toolResultsArray.push({
-                                    toolCallId: tool.id,
-                                    result: result
-                                });
-                                executedActionNames.push(toolDisplayName);
-                                executedToolCalls.push(tool);
-                                // 删除"正在执行"的临时消息
-                                setMessages(prev => prev.slice(0, -1));
+                                const stepId = addThoughtStep(toolDisplayName);
+                                try {
+                                    const execResult = await executeToolCall(tool);
+                                    toolResultsArray.push({
+                                        toolCallId: tool.id,
+                                        result: execResult.result,
+                                        ...(execResult.images && { images: execResult.images })
+                                    });
+                                    setExecutedTools(prev => [...prev, toolDisplayName]);
+                                    completeThoughtStep(stepId);
+                                }
+                                catch (err) {
+                                    toolResultsArray.push({
+                                        toolCallId: tool.id,
+                                        result: `Error: ${err.message}`
+                                    });
+                                    failThoughtStep(stepId);
+                                }
                             }
-                            // 添加包含思考内容和工具执行结果的消息
-                            setMessages(prev => [...prev, {
-                                    role: 'assistant',
-                                    content: '',
-                                    toolCalls: executedToolCalls,
-                                    executedActions: executedActionNames,
-                                    thinkingContent: thinkingText || undefined,
-                                    timestamp: new Date()
-                                }]);
-                            // 将工具结果发送回 LLM，继续对话
-                            console.log('[Agent] Submitting tool results and continuing...');
+                            // Recurse to continue the agent loop
                             await processAgentLoop('', context, currentSessionId, conversationId, true, toolResultsArray);
-                            return; // 递归调用后直接返回
+                            return;
                         }
                         break;
                     case 'error':
-                        console.error('[Agent] Error event received:', event.error);
-                        if ((_a = event.error) === null || _a === void 0 ? void 0 : _a.includes('请先配置')) {
+                        if (thinkingStepId)
+                            failThoughtStep(thinkingStepId);
+                        if (((_a = event.error) === null || _a === void 0 ? void 0 : _a.includes('Please configure')) || ((_b = event.error) === null || _b === void 0 ? void 0 : _b.includes('请先配置'))) {
                             setShowSettings(true);
                         }
                         throw new Error(event.error);
@@ -481,21 +1027,28 @@ const AgentPanel = ({ notebookTracker }) => {
             console.error('[Agent] processAgentLoop error:', error);
             throw error;
         }
-        // 没有工具调用时，添加最终的助手消息
-        if (fullContent) {
+        // No more tool calls — add final assistant message with ThoughtChain
+        if (thinkingStepId) {
+            completeThoughtStep(thinkingStepId);
+        }
+        // Snapshot the thought chain
+        const finalSteps = [...thoughtStepsRef.current];
+        const hasSteps = finalSteps.length > 0;
+        // Always add a message: with content, or with just ThoughtChain
+        if (fullContent || hasSteps) {
             setMessages(prev => [...prev, {
                     role: 'assistant',
-                    content: fullContent,
+                    content: fullContent || '',
+                    thoughtSteps: hasSteps ? finalSteps : undefined,
                     timestamp: new Date()
                 }]);
-            // 保存对话历史（只保存最终响应）
-            if (conversationId && !isToolResult) {
-                // 仅在首次调用（非工具结果回调）时保存用户消息
-                saveConversationHistory(conversationId, initialMessage, fullContent);
-            }
-            else if (conversationId && isToolResult) {
-                // 工具结果回调时只保存助手响应
-                saveConversationHistory(conversationId, '', fullContent);
+            if (fullContent) {
+                if (conversationId && !isToolResult) {
+                    saveConversationHistory(conversationId, initialMessage, fullContent);
+                }
+                else if (conversationId && isToolResult) {
+                    saveConversationHistory(conversationId, '', fullContent);
+                }
             }
         }
     };
@@ -506,6 +1059,20 @@ const AgentPanel = ({ notebookTracker }) => {
             handleSend();
         }
     };
+    // 停止 Agent
+    const handleStop = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+        setIsLoading(false);
+        setStreamingContent('');
+        setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: '⏹ Stopped by user.',
+                timestamp: new Date()
+            }]);
+    };
     // 新建会话
     const handleNewChat = async () => {
         setMessages([]);
@@ -513,7 +1080,7 @@ const AgentPanel = ({ notebookTracker }) => {
         setStreamingContent('');
         setExecutedTools([]);
         setCurrentConversationId(null);
-        setConversationTitle('新对话');
+        setConversationTitle('New Chat');
         setShowHistory(false);
     };
     // 加载历史对话
@@ -534,7 +1101,7 @@ const AgentPanel = ({ notebookTracker }) => {
         }
         catch (e) {
             console.error('Failed to load conversation:', e);
-            alert('加载对话失败');
+            alert('Failed to load conversation');
         }
     };
     // 渲染代码块
@@ -543,14 +1110,14 @@ const AgentPanel = ({ notebookTracker }) => {
             react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "code-block-header" },
                 react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "code-lang-badge" }, language),
                 react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "code-actions" },
-                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "code-action-btn", onClick: () => navigator.clipboard.writeText(code), title: "\u590D\u5236" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "code-action-btn", onClick: () => navigator.clipboard.writeText(code), title: "Copy" },
                         react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "currentColor" },
                             react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" }),
                             react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" }))))),
             react__WEBPACK_IMPORTED_MODULE_0__.createElement("pre", { className: "code-block-content" },
                 react__WEBPACK_IMPORTED_MODULE_0__.createElement("code", null, code))));
     };
-    // 解析并渲染消息内容（支持代码块）
+    // 解析并渲染消息内容（支持代码块 + markdown）
     const renderMessageContent = (content) => {
         const parts = [];
         const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
@@ -558,10 +1125,10 @@ const AgentPanel = ({ notebookTracker }) => {
         let match;
         let keyIndex = 0;
         while ((match = codeBlockRegex.exec(content)) !== null) {
-            // 添加代码块之前的文本
+            // 添加代码块之前的文本（用 markdown 渲染）
             if (match.index > lastIndex) {
                 const text = content.slice(lastIndex, match.index);
-                parts.push(react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { key: keyIndex++, className: "text-content" }, text));
+                parts.push(react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { key: keyIndex++, className: "md-content" }, (0,_utils_markdownRenderer__WEBPACK_IMPORTED_MODULE_5__.renderMarkdown)(text)));
             }
             // 添加代码块
             const language = match[1] || 'python';
@@ -569,71 +1136,115 @@ const AgentPanel = ({ notebookTracker }) => {
             parts.push(react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { key: keyIndex++ }, renderCodeBlock(code, language)));
             lastIndex = match.index + match[0].length;
         }
-        // 添加剩余文本
+        // 添加剩余文本（用 markdown 渲染）
         if (lastIndex < content.length) {
-            parts.push(react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { key: keyIndex++, className: "text-content" }, content.slice(lastIndex)));
+            const remaining = content.slice(lastIndex);
+            parts.push(react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { key: keyIndex++, className: "md-content" }, (0,_utils_markdownRenderer__WEBPACK_IMPORTED_MODULE_5__.renderMarkdown)(remaining)));
         }
         return parts.length > 0 ? parts : content;
+    };
+    // ==================== ThoughtChain rendering ====================
+    const formatDuration = (ms) => {
+        if (ms < 1000)
+            return `${ms}ms`;
+        return `${(ms / 1000).toFixed(1)}s`;
+    };
+    const renderThoughtChain = (steps, isLive = false) => {
+        if (!steps || steps.length === 0)
+            return null;
+        const totalTime = steps.length > 0
+            ? (steps[steps.length - 1].endTime || Date.now()) - steps[0].startTime
+            : 0;
+        const isExpanded = isLive || expandedThinking.has(-999); // -999 is placeholder, per-message below
+        return (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "thought-chain" },
+            react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "thought-chain-header", onClick: () => !isLive && toggleThinking(-999) },
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "thought-chain-icon" }, isLive ? (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "thought-chain-spinner" })) : (react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "currentColor" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M8 0a8 8 0 100 16A8 8 0 008 0zm.93 4.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 4.588z" }),
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("circle", { cx: "8", cy: "3.5", r: ".75" })))),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "thought-chain-summary" }, isLive ? 'Thinking...' : `Thought for ${formatDuration(totalTime)}`),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "thought-chain-count" },
+                    steps.length,
+                    " steps"),
+                !isLive && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { className: `thought-chain-arrow ${isExpanded ? 'expanded' : ''}`, width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M4.427 7.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 7H4.604a.25.25 0 00-.177.427z" })))),
+            (isLive || isExpanded) && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "thought-chain-steps" }, steps.map((step, i) => (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { key: step.id, className: `thought-step thought-step-${step.status}` },
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "thought-step-indicator" }, step.status === 'running' ? (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "step-spinner" })) : step.status === 'done' ? (react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor", className: "step-check" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { fillRule: "evenodd", d: "M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" }))) : (react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor", className: "step-error" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { fillRule: "evenodd", d: "M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z" })))),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "thought-step-title" }, step.title),
+                step.endTime && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "thought-step-time" }, formatDuration(step.endTime - step.startTime))),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: `thought-step-badge badge-${step.status}` }, step.status === 'running' ? 'Running' : step.status === 'done' ? 'Done' : 'Error'))))))));
+    };
+    const renderMessageThoughtChain = (steps, msgIndex) => {
+        if (!steps || steps.length === 0)
+            return null;
+        const totalTime = steps.length > 0
+            ? (steps[steps.length - 1].endTime || Date.now()) - steps[0].startTime
+            : 0;
+        const isExpanded = expandedThinking.has(msgIndex);
+        return (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "thought-chain" },
+            react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "thought-chain-header", onClick: () => toggleThinking(msgIndex) },
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "thought-chain-icon" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "currentColor" },
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M8 0a8 8 0 100 16A8 8 0 008 0zm.93 4.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 4.588z" }),
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("circle", { cx: "8", cy: "3.5", r: ".75" }))),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "thought-chain-summary" },
+                    "Thought for ",
+                    formatDuration(totalTime)),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "thought-chain-count" },
+                    steps.length,
+                    " steps"),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { className: `thought-chain-arrow ${isExpanded ? 'expanded' : ''}`, width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M4.427 7.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 7H4.604a.25.25 0 00-.177.427z" }))),
+            isExpanded && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "thought-chain-steps" }, steps.map((step) => (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { key: step.id, className: `thought-step thought-step-${step.status}` },
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "thought-step-indicator" }, step.status === 'done' ? (react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor", className: "step-check" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { fillRule: "evenodd", d: "M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" }))) : (react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor", className: "step-error" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { fillRule: "evenodd", d: "M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z" })))),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "thought-step-title" }, step.title),
+                step.endTime && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "thought-step-time" }, formatDuration(step.endTime - step.startTime))),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: `thought-step-badge badge-${step.status}` }, step.status === 'done' ? 'Done' : 'Error'))))))));
     };
     // 渲染消息
     const renderMessage = (msg, index) => {
         const isUser = msg.role === 'user';
         const hasContent = msg.content && msg.content.trim().length > 0;
-        const hasActions = msg.executedActions && msg.executedActions.length > 0;
-        const hasToolCalls = msg.toolCalls && msg.toolCalls.length > 0;
-        const hasThinking = msg.thinkingContent && msg.thinkingContent.trim().length > 0;
-        const isThinkingExpanded = expandedThinking.has(index);
-        // 如果是只有工具执行的消息（无文本内容）
-        if (!isUser && !hasContent && (hasActions || hasToolCalls)) {
-            return (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { key: index, className: "agent-message assistant" },
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-response" },
-                    hasThinking && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "thinking-section" },
-                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "thinking-toggle", onClick: () => toggleThinking(index), title: isThinkingExpanded ? "折叠思考过程" : "展开思考过程" },
-                            react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { className: `thinking-arrow ${isThinkingExpanded ? 'expanded' : ''}`, width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor" },
-                                react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M4.427 7.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 7H4.604a.25.25 0 00-.177.427z" })),
-                            react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "thinking-label" }, "\u601D\u8003\u8FC7\u7A0B")),
-                        isThinkingExpanded && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "thinking-content" }, renderMessageContent(msg.thinkingContent))))),
-                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "executed-actions" },
-                        hasActions && msg.executedActions.map((action, i) => (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { key: i, className: "action-item completed" },
-                            react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { className: "check-icon", width: "14", height: "14", viewBox: "0 0 16 16", fill: "currentColor" },
-                                react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { fillRule: "evenodd", d: "M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" })),
-                            react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", null, action)))),
-                        !hasActions && hasToolCalls && msg.toolCalls.map((tool, i) => (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { key: i, className: "action-item completed" },
-                            react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { className: "check-icon", width: "14", height: "14", viewBox: "0 0 16 16", fill: "currentColor" },
-                                react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { fillRule: "evenodd", d: "M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" })),
-                            react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", null, getToolDisplayName(tool.name)))))))));
-        }
-        return (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { key: index, className: `agent-message ${isUser ? 'user' : 'assistant'}` }, isUser ? (
-        // 用户消息 - 简单气泡
-        react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "user-message-bubble" },
+        const hasThoughtSteps = msg.thoughtSteps && msg.thoughtSteps.length > 0;
+        return (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { key: index, className: `agent-message ${isUser ? 'user' : 'assistant'}` }, isUser ? (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "user-message-bubble" },
             react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "user-avatar" },
                 react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "currentColor" },
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M8 0a8 8 0 100 16A8 8 0 008 0zM1.5 8a6.5 6.5 0 1113 0 6.5 6.5 0 01-13 0z" }),
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M8 4a2 2 0 100 4 2 2 0 000-4zM4 10.5c0-1.5 2-2.5 4-2.5s4 1 4 2.5V12H4v-1.5z" }))),
-            react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "user-message-content" }, msg.content))) : (
-        // 助手消息
-        react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-response" },
+            react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "user-message-content" }, msg.content))) : (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-response" },
             react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-header" },
                 react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-avatar" },
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "currentColor" },
                         react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M8 0a8 8 0 100 16A8 8 0 008 0zm2.8 11.2c-.4.4-1 .8-1.8.8s-1.4-.4-1.8-.8c-.8-.8-1.2-2-1.2-3.2s.4-2.4 1.2-3.2c.4-.4 1-.8 1.8-.8s1.4.4 1.8.8c.8.8 1.2 2 1.2 3.2s-.4 2.4-1.2 3.2z" }))),
                 react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "assistant-label" }, "OpenGeoLab AI")),
-            react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-content" }, renderMessageContent(msg.content))))));
+            hasThoughtSteps && renderMessageThoughtChain(msg.thoughtSteps, index),
+            hasContent && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-content" }, renderMessageContent(msg.content)))))));
     };
     // 获取工具的友好显示名称
     const getToolDisplayName = (toolName) => {
         const nameMap = {
-            'add_code_cell': '添加并运行代码单元格',
-            'add_markdown_cell': '添加 Markdown 单元格',
-            'run_code': '执行代码',
-            'read_file': '读取文件',
-            'list_files': '列出文件',
-            'search_models': '搜索地理模型',
-            'search_datamethods': '搜索数据方法',
-            'get_model_info': '获取模型详情',
-            'get_datamethod_info': '获取数据方法详情',
-            'generate_model_code': '生成模型调用代码',
-            'generate_datamethod_code': '生成数据方法调用代码'
+            'add_code_cell': 'Insert and run code cell',
+            'edit_code_cell': 'Edit and re-run code cell',
+            'add_markdown_cell': 'Insert markdown cell',
+            'run_terminal_command': 'Run terminal command',
+            'list_project_files': 'List project files',
+            'read_project_file': 'Read project file',
+            'write_project_file': 'Write project file',
+            'edit_project_file': 'Edit project file',
+            'insert_lines_in_file': 'Insert lines in file',
+            'undo_edit': 'Undo file edit',
+            'grep_project_files': 'Search in files',
+            'search_models': 'Search models',
+            'search_data_methods': 'Search data methods',
+            'get_model_info': 'Get model info',
+            'think': 'Deep thinking',
+            'finish': 'Task complete',
+            'web_search': 'Web search',
+            'download_file': 'Download file',
+            'run_mcp_tool': 'Run MCP tool'
         };
         return nameMap[toolName] || toolName;
     };
@@ -652,13 +1263,13 @@ const AgentPanel = ({ notebookTracker }) => {
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M8 0a8 8 0 100 16A8 8 0 008 0zm2.8 11.2c-.4.4-1 .8-1.8.8s-1.4-.4-1.8-.8c-.8-.8-1.2-2-1.2-3.2s.4-2.4 1.2-3.2c.4-.4 1-.8 1.8-.8s1.4.4 1.8.8c.8.8 1.2 2 1.2 3.2s-.4 2.4-1.2 3.2z" })),
                 react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "header-title" }, conversationTitle)),
             react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "header-right" },
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "icon-btn", onClick: () => setShowHistory(true), title: "\u5386\u53F2\u5BF9\u8BDD" },
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "icon-btn", onClick: () => setShowHistory(true), title: "Chat history" },
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "currentColor" },
                         react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M1.5 2.75a.25.25 0 01.25-.25h12.5a.25.25 0 01.25.25v8.5a.25.25 0 01-.25.25h-6.5a.75.75 0 00-.53.22L4.5 14.44v-2.19a.75.75 0 00-.75-.75h-2a.25.25 0 01-.25-.25v-8.5zM1.75 1A1.75 1.75 0 000 2.75v8.5C0 12.216.784 13 1.75 13H3v2.25c0 .69.56 1.25 1.25 1.25.33 0 .65-.132.884-.366L7.634 13.5H14.25A1.75 1.75 0 0016 11.75v-8.5A1.75 1.75 0 0014.25 1H1.75z" }))),
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "icon-btn", onClick: handleNewChat, title: "\u65B0\u5EFA\u5BF9\u8BDD" },
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "icon-btn", onClick: handleNewChat, title: "New chat" },
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "currentColor" },
                         react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M7.25 1.75a.75.75 0 011.5 0V7h5.25a.75.75 0 010 1.5H8.75v5.25a.75.75 0 01-1.5 0V8.5H2a.75.75 0 010-1.5h5.25V1.75z" }))),
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "icon-btn", onClick: () => setShowSettings(true), title: "\u8BBE\u7F6E" },
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "icon-btn", onClick: () => setShowSettings(true), title: "Settings" },
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "currentColor" },
                         react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { fillRule: "evenodd", d: "M7.429 1.525a6.593 6.593 0 011.142 0c.036.003.108.036.137.146l.289 1.105c.147.56.55.967.997 1.189.174.086.341.183.501.29.417.278.97.423 1.53.27l1.102-.303c.11-.03.175.016.195.046.219.31.41.641.573.989.014.031.022.11-.059.19l-.815.806c-.411.406-.562.957-.53 1.456a4.588 4.588 0 010 .582c-.032.499.119 1.05.53 1.456l.815.806c.08.08.073.159.059.19a6.494 6.494 0 01-.573.99c-.02.029-.086.074-.195.045l-1.103-.303c-.559-.153-1.112-.008-1.529.27-.16.107-.327.204-.5.29-.449.222-.851.628-.998 1.189l-.289 1.105c-.029.11-.101.143-.137.146a6.613 6.613 0 01-1.142 0c-.036-.003-.108-.037-.137-.146l-.289-1.105c-.147-.56-.55-.967-.997-1.189a4.502 4.502 0 01-.501-.29c-.417-.278-.97-.423-1.53-.27l-1.102.303c-.11.03-.175-.016-.195-.046a6.492 6.492 0 01-.573-.989c-.014-.031-.022-.11.059-.19l.815-.806c.411-.406.562-.957.53-1.456a4.587 4.587 0 010-.582c.032-.499-.119-1.05-.53-1.456l-.815-.806c-.08-.08-.073-.159-.059-.19.162-.348.354-.68.573-.989.02-.03.085-.076.195-.046l1.103.303c.559.153 1.112.008 1.529-.27.16-.107.327-.204.5-.29.449-.222.851-.628.998-1.189l.289-1.105c.029-.11.101-.143.137-.146zM8 0c-.236 0-.47.01-.701.03-.743.065-1.29.615-1.458 1.261l-.29 1.106c-.017.066-.078.158-.211.224a5.994 5.994 0 00-.668.386c-.123.082-.233.09-.3.071L3.27 2.776c-.644-.177-1.392.02-1.82.63a7.977 7.977 0 00-.704 1.217c-.315.675-.111 1.422.363 1.891l.815.806c.05.048.098.147.088.294a6.084 6.084 0 000 .772c.01.147-.038.246-.088.294l-.815.806c-.474.469-.678 1.216-.363 1.891.2.428.436.835.704 1.218.428.609 1.176.806 1.82.63l1.103-.303c.066-.019.176-.011.299.071.213.143.436.272.668.386.133.066.194.158.212.224l.289 1.106c.169.646.715 1.196 1.458 1.26a8.094 8.094 0 001.402 0c.743-.064 1.29-.614 1.458-1.26l.29-1.106c.017-.066.078-.158.211-.224a5.98 5.98 0 00.668-.386c.123-.082.233-.09.3-.071l1.102.302c.644.177 1.392-.02 1.82-.63.268-.382.505-.789.704-1.217.315-.675.111-1.422-.364-1.891l-.814-.806c-.05-.048-.098-.147-.088-.294a6.1 6.1 0 000-.772c-.01-.147.039-.246.088-.294l.814-.806c.475-.469.679-1.216.364-1.891a7.992 7.992 0 00-.704-1.218c-.428-.609-1.176-.806-1.82-.63l-1.103.303c-.066.019-.176.011-.299-.071a5.991 5.991 0 00-.668-.386c-.133-.066-.194-.158-.212-.224L10.16 1.29C9.99.645 9.444.095 8.701.031A8.094 8.094 0 008 0zm0 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM6.5 8a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0z" }))))),
         react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "agent-messages" },
@@ -666,14 +1277,35 @@ const AgentPanel = ({ notebookTracker }) => {
                 react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "welcome-icon" },
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "48", height: "48", viewBox: "0 0 16 16", fill: "currentColor", opacity: "0.5" },
                         react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M8 0a8 8 0 100 16A8 8 0 008 0zm2.8 11.2c-.4.4-1 .8-1.8.8s-1.4-.4-1.8-.8c-.8-.8-1.2-2-1.2-3.2s.4-2.4 1.2-3.2c.4-.4 1-.8 1.8-.8s1.4.4 1.8.8c.8.8 1.2 2 1.2 3.2s-.4 2.4-1.2 3.2z" }))),
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("h3", null, "OpenGeoLab AI \u52A9\u624B"),
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("p", { className: "welcome-subtitle" }, "\u6211\u53EF\u4EE5\u5E2E\u4F60\u7F16\u5199\u4EE3\u7801\u3001\u641C\u7D22\u6A21\u578B\u3001\u5904\u7406\u6570\u636E"),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("h3", null, "OpenGeoLab AI Assistant"),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("p", { className: "welcome-subtitle" }, "I can code, inspect your project, run terminal commands, and help reproduce workflows."),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "smart-cases" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "smart-cases-title" }, "Smart Cases"),
+                    isLoadingCases && react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "smart-cases-loading" }, "Loading cases..."),
+                    !isLoadingCases && smartCases.length === 0 && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "smart-cases-empty" }, "No curated cases available.")),
+                    !isLoadingCases && smartCases.map((agentCase) => (react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { key: agentCase.id, className: "smart-case-item", onClick: () => handleRunSmartCase(agentCase), disabled: isLoading },
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "smart-case-name" }, agentCase.title),
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "smart-case-meta" },
+                            agentCase.category,
+                            " \u00B7 ",
+                            agentCase.difficulty))))),
                 !hasConfig && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "config-btn", onClick: () => setShowSettings(true) },
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "currentColor" },
                         react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M7.429 1.525a6.593 6.593 0 011.142 0c.036.003.108.036.137.146l.289 1.105c.147.56.55.967.997 1.189.174.086.341.183.501.29.417.278.97.423 1.53.27l1.102-.303c.11-.03.175.016.195.046a6.588 6.588 0 01.573.989c.014.031.022.11-.059.19l-.815.806c-.411.406-.562.957-.53 1.456a4.588 4.588 0 010 .582c-.032.499.119 1.05.53 1.456l.815.806c.08.08.073.159.059.19-.163.348-.355.68-.573.99-.02.029-.086.074-.195.045l-1.103-.303c-.559-.153-1.112-.008-1.529.27-.16.107-.327.204-.5.29-.449.222-.851.628-.998 1.189l-.289 1.105c-.029.11-.101.143-.137.146a6.613 6.613 0 01-1.142 0c-.036-.003-.108-.037-.137-.146l-.289-1.105c-.147-.56-.55-.967-.997-1.189a4.502 4.502 0 01-.501-.29c-.417-.278-.97-.423-1.53-.27l-1.102.303c-.11.03-.175-.016-.195-.046a6.492 6.492 0 01-.573-.989c-.014-.031-.022-.11.059-.19l.815-.806c.411-.406.562-.957.53-1.456a4.587 4.587 0 010-.582c.032-.499-.119-1.05-.53-1.456l-.815-.806c-.08-.08-.073-.159-.059-.19.162-.348.354-.68.573-.989.02-.03.085-.076.195-.046l1.103.303c.559.153 1.112.008 1.529-.27.16-.107.327-.204.5-.29.449-.222.851-.628.998-1.189l.289-1.105c.029-.11.101-.143.137-.146zM8 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z" })),
-                    "\u914D\u7F6E LLM API")))),
+                    "Configure LLM API")))),
             messages.map(renderMessage),
-            streamingContent && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "agent-message assistant" },
+            isLoading && activeThoughtSteps.length > 0 && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "agent-message assistant" },
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-response" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-header" },
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-avatar" },
+                            react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "currentColor" },
+                                react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M8 0a8 8 0 100 16A8 8 0 008 0zm2.8 11.2c-.4.4-1 .8-1.8.8s-1.4-.4-1.8-.8c-.8-.8-1.2-2-1.2-3.2s.4-2.4 1.2-3.2c.4-.4 1-.8 1.8-.8s1.4.4 1.8.8c.8.8 1.2 2 1.2 3.2s-.4 2.4-1.2 3.2z" }))),
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "assistant-label" }, "OpenGeoLab AI")),
+                    renderThoughtChain(activeThoughtSteps, true),
+                    streamingContent && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-content" },
+                        renderMessageContent(streamingContent),
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "typing-cursor" }, "\u258A")))))),
+            streamingContent && activeThoughtSteps.length === 0 && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "agent-message assistant" },
                 react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-response" },
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-header" },
                         react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-avatar" },
@@ -683,22 +1315,57 @@ const AgentPanel = ({ notebookTracker }) => {
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "assistant-content" },
                         renderMessageContent(streamingContent),
                         react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "typing-cursor" }, "\u258A"))))),
-            executedTools.length > 0 && isLoading && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "agent-actions" }, executedTools.map((tool, i) => (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { key: i, className: "action-item" },
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { className: "check-icon", width: "14", height: "14", viewBox: "0 0 16 16", fill: "currentColor" },
-                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { fillRule: "evenodd", d: "M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" })),
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", null, tool)))))),
-            isLoading && !streamingContent && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "agent-loading" },
+            isLoading && !streamingContent && activeThoughtSteps.length === 0 && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "agent-loading" },
                 react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "loading-dots" },
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", null),
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", null),
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", null)))),
             react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { ref: messagesEndRef })),
         react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "agent-input-area" },
-            react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "input-wrapper" },
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("textarea", { ref: inputRef, value: input, onChange: (e) => setInput(e.target.value), onKeyDown: handleKeyDown, placeholder: "\u8BE2\u95EE OpenGeoLab AI...", disabled: isLoading, rows: 1 }),
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "submit-btn", onClick: handleSend, disabled: !input.trim() || isLoading },
+            (attachedFiles.length > 0 || isUploading) && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "attached-files" },
+                attachedFiles.map((file, i) => (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { key: i, className: `attached-file-chip ${file.uploaded ? 'chip-success' : 'chip-error'}` },
+                    file.uploaded ? (react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor", className: "chip-icon-ok" },
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { fillRule: "evenodd", d: "M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" }))) : (react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor", className: "chip-icon-err" },
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { fillRule: "evenodd", d: "M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z" }))),
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "file-chip-name" }, file.name),
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "file-chip-size" }, formatFileSize(file.size)),
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "file-chip-remove", onClick: () => removeAttachedFile(i) }, "\u00D7")))),
+                isUploading && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "attached-file-chip chip-uploading" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "chip-spinner" }),
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", null, "Uploading..."))))),
+            isLoading && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "agent-status-bar" },
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "status-pulse" }),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", { className: "status-text" }, streamingContent ? 'Agent is responding...' : executedTools.length > 0 ? 'Executing tools...' : 'Agent is thinking...'))),
+            react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: `input-wrapper ${isLoading ? 'input-wrapper-loading' : ''}` },
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "attach-btn", onClick: () => { var _a; return (_a = fileInputRef.current) === null || _a === void 0 ? void 0 : _a.click(); }, disabled: isLoading, title: "Attach files" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "currentColor" },
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M4.317 1.592a3.75 3.75 0 015.366 0l4.608 4.763a.75.75 0 01-1.078 1.043l-4.608-4.763a2.25 2.25 0 00-3.21 0L1.636 6.56a3.5 3.5 0 004.944 4.949l4.608-4.763a1.25 1.25 0 00-1.788-1.747L5.792 9.762a.25.25 0 00.358.348l2.608-2.697a.75.75 0 011.078 1.044l-2.608 2.697a1.75 1.75 0 01-2.436-2.514l3.608-3.763a2.75 2.75 0 013.866 3.834L7.658 13.47a5 5 0 01-7.022-7.118l3.681-3.76z" }))),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("input", { ref: fileInputRef, type: "file", multiple: true, style: { display: 'none' }, onChange: handleFileSelect }),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("textarea", { ref: inputRef, value: input, onChange: (e) => setInput(e.target.value), onKeyDown: handleKeyDown, placeholder: isLoading ? (chatMode === 'ask' ? 'Thinking...' : 'Agent is working...') : (chatMode === 'ask' ? 'Ask a question...' : 'Ask OpenGeoLab AI Agent...'), disabled: isLoading, rows: 1 }),
+                isLoading ? (react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "stop-btn", onClick: handleStop, title: "Stop generation" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "currentColor" },
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("rect", { x: "3", y: "3", width: "10", height: "10", rx: "2" })))) : (react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "submit-btn", onClick: () => handleSend(), disabled: !input.trim() && attachedFiles.filter(f => f.uploaded).length === 0 },
                     react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "currentColor" },
                         react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M.989 8l6.012-6.012v4.762h8v2.5h-8v4.762L.99 8z", transform: "rotate(-90 8 8)" }))))),
+            react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "model-selector-bar" },
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: `mode-toggle-btn ${chatMode}`, onClick: () => setChatMode(prev => prev === 'agent' ? 'ask' : 'agent'), disabled: isLoading, title: chatMode === 'agent' ? 'Agent mode: can execute code, use tools' : 'Ask mode: simple Q&A, no tool calls' }, chatMode === 'agent' ? (react__WEBPACK_IMPORTED_MODULE_0__.createElement(react__WEBPACK_IMPORTED_MODULE_0__.Fragment, null,
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor" },
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M8 1a2 2 0 012 2v2H6V3a2 2 0 012-2zM6 6h4v1H6V6zm-3.5 2A1.5 1.5 0 001 9.5v4A1.5 1.5 0 002.5 15h11a1.5 1.5 0 001.5-1.5v-4A1.5 1.5 0 0013.5 8h-11zM4 11a1 1 0 110-2 1 1 0 010 2zm4 0a1 1 0 110-2 1 1 0 010 2zm4 0a1 1 0 110-2 1 1 0 010 2z" })),
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", null, "Agent"))) : (react__WEBPACK_IMPORTED_MODULE_0__.createElement(react__WEBPACK_IMPORTED_MODULE_0__.Fragment, null,
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor" },
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0114.25 13H8.06l-2.573 2.573A1.458 1.458 0 013 14.543V13H1.75A1.75 1.75 0 010 11.25v-8.5z" })),
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", null, "Ask")))),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "model-selector-wrapper" },
+                    react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "model-selector-btn", onClick: () => setShowModelDropdown(!showModelDropdown), disabled: isLoading },
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor" },
+                            react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M8 0a8 8 0 100 16A8 8 0 008 0zm2.8 11.2c-.4.4-1 .8-1.8.8s-1.4-.4-1.8-.8c-.8-.8-1.2-2-1.2-3.2s.4-2.4 1.2-3.2c.4-.4 1-.8 1.8-.8s1.4.4 1.8.8c.8.8 1.2 2 1.2 3.2s-.4 2.4-1.2 3.2z" })),
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", null, currentModel || 'Select model'),
+                        react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { className: `model-arrow ${showModelDropdown ? 'expanded' : ''}`, width: "10", height: "10", viewBox: "0 0 16 16", fill: "currentColor" },
+                            react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { d: "M4.427 7.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 7H4.604a.25.25 0 00-.177.427z" }))),
+                    showModelDropdown && availableModels.length > 0 && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "model-dropdown" }, availableModels.map((m, i) => (react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { key: i, className: `model-option ${m.model === currentModel ? 'active' : ''}`, onClick: () => handleModelChange(m.model) },
+                        m.label,
+                        m.model === currentModel && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("svg", { width: "12", height: "12", viewBox: "0 0 16 16", fill: "currentColor" },
+                            react__WEBPACK_IMPORTED_MODULE_0__.createElement("path", { fillRule: "evenodd", d: "M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" }))))))))))),
         react__WEBPACK_IMPORTED_MODULE_0__.createElement("style", null, `
                 /* OpenGeoLab AI 面板 - 浅色主题 */
                 .agent-panel {
@@ -795,6 +1462,63 @@ const AgentPanel = ({ notebookTracker }) => {
                     color: var(--jp-ui-font-color1, #666666);
                     margin: 0 0 20px 0;
                 }
+
+                .smart-cases {
+                    width: 100%;
+                    max-width: 360px;
+                    text-align: left;
+                    margin-bottom: 16px;
+                }
+
+                .smart-cases-title {
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: var(--jp-ui-font-color1, #666666);
+                    margin-bottom: 8px;
+                }
+
+                .smart-cases-loading,
+                .smart-cases-empty {
+                    font-size: 12px;
+                    color: var(--jp-ui-font-color2, #8a8a8a);
+                    margin-bottom: 6px;
+                }
+
+                .smart-case-item {
+                    width: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 2px;
+                    border: 1px solid var(--jp-border-color1, #dcdcdc);
+                    border-radius: 8px;
+                    background: var(--jp-layout-color0, #ffffff);
+                    color: var(--jp-ui-font-color0, #333333);
+                    padding: 8px 10px;
+                    margin-bottom: 6px;
+                    cursor: pointer;
+                    text-align: left;
+                }
+
+                .smart-case-item:hover {
+                    border-color: var(--jp-brand-color1, #1976d2);
+                    background: rgba(25, 118, 210, 0.06);
+                }
+
+                .smart-case-item:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+
+                .smart-case-name {
+                    font-size: 12px;
+                    font-weight: 600;
+                }
+
+                .smart-case-meta {
+                    font-size: 11px;
+                    color: var(--jp-ui-font-color2, #8a8a8a);
+                }
                 
                 .config-btn {
                     display: flex;
@@ -888,6 +1612,91 @@ const AgentPanel = ({ notebookTracker }) => {
                     word-break: break-word;
                 }
                 
+                /* Markdown rendered content */
+                .assistant-content .md-content {
+                    word-break: break-word;
+                }
+                .assistant-content .md-content p {
+                    margin: 0.4em 0;
+                }
+                .assistant-content .md-content h1,
+                .assistant-content .md-content h2,
+                .assistant-content .md-content h3,
+                .assistant-content .md-content h4 {
+                    margin: 0.6em 0 0.3em 0;
+                    font-weight: 600;
+                    line-height: 1.3;
+                }
+                .assistant-content .md-content h1 { font-size: 1.3em; }
+                .assistant-content .md-content h2 { font-size: 1.15em; }
+                .assistant-content .md-content h3 { font-size: 1.05em; }
+                .assistant-content .md-content ul,
+                .assistant-content .md-content ol {
+                    margin: 0.3em 0;
+                    padding-left: 1.5em;
+                }
+                .assistant-content .md-content li {
+                    margin: 0.15em 0;
+                }
+                .assistant-content .md-content li > ul,
+                .assistant-content .md-content li > ol {
+                    margin: 0.1em 0;
+                }
+                .assistant-content .md-content .md-inline-code {
+                    background: rgba(0,0,0,0.06);
+                    padding: 1px 5px;
+                    border-radius: 3px;
+                    font-family: var(--jp-code-font-family, monospace);
+                    font-size: 0.9em;
+                }
+                .assistant-content .md-content strong {
+                    font-weight: 600;
+                }
+                .assistant-content .md-content a {
+                    color: var(--jp-brand-color1, #1976d2);
+                    text-decoration: none;
+                }
+                .assistant-content .md-content a:hover {
+                    text-decoration: underline;
+                }
+                /* Markdown tables */
+                .assistant-content .md-content .md-table {
+                    border-collapse: collapse;
+                    width: 100%;
+                    margin: 0.5em 0;
+                    font-size: 0.92em;
+                    overflow-x: auto;
+                    display: block;
+                }
+                .assistant-content .md-content .md-table thead {
+                    display: table;
+                    width: 100%;
+                    table-layout: fixed;
+                }
+                .assistant-content .md-content .md-table tbody {
+                    display: table;
+                    width: 100%;
+                    table-layout: fixed;
+                }
+                .assistant-content .md-content .md-table th,
+                .assistant-content .md-content .md-table td {
+                    border: 1px solid var(--jp-border-color1, #ddd);
+                    padding: 6px 10px;
+                    text-align: left;
+                }
+                .assistant-content .md-content .md-table th {
+                    background: var(--jp-layout-color2, #f5f5f5);
+                    font-weight: 600;
+                }
+                .assistant-content .md-content .md-table tr:nth-child(even) td {
+                    background: var(--jp-layout-color1, #fafafa);
+                }
+                .assistant-content .md-content hr {
+                    border: none;
+                    border-top: 1px solid var(--jp-border-color1, #ddd);
+                    margin: 0.8em 0;
+                }
+
                 /* 工具调用列表 */
                 .tool-calls-list {
                     margin-top: 12px;
@@ -1168,6 +1977,66 @@ const AgentPanel = ({ notebookTracker }) => {
                     cursor: not-allowed;
                 }
                 
+                /* Stop button */
+                .stop-btn {
+                    flex-shrink: 0;
+                    width: 32px;
+                    height: 32px;
+                    border: 2px solid #e53935;
+                    border-radius: 6px;
+                    background: transparent;
+                    color: #e53935;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.15s;
+                    animation: stopPulse 2s ease-in-out infinite;
+                }
+                
+                .stop-btn:hover {
+                    background: #e53935;
+                    color: white;
+                }
+                
+                @keyframes stopPulse {
+                    0%, 100% { border-color: #e53935; opacity: 1; }
+                    50% { border-color: #ef9a9a; opacity: 0.8; }
+                }
+                
+                /* Input wrapper loading state */
+                .input-wrapper-loading {
+                    border-color: var(--jp-brand-color1, #1976d2) !important;
+                    background: var(--jp-layout-color2, #f5f5f5) !important;
+                }
+                
+                /* Agent status bar */
+                .agent-status-bar {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 0 4px 8px 4px;
+                }
+                
+                .status-pulse {
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    background: var(--jp-brand-color1, #1976d2);
+                    animation: statusPulse 1.5s ease-in-out infinite;
+                }
+                
+                @keyframes statusPulse {
+                    0%, 100% { opacity: 1; transform: scale(1); }
+                    50% { opacity: 0.4; transform: scale(0.8); }
+                }
+                
+                .status-text {
+                    font-size: 11px;
+                    color: var(--jp-ui-font-color2, #999999);
+                    font-style: italic;
+                }
+                
                 /* ==================== 历史对话面板样式 ==================== */
                 .chat-history-panel {
                     position: absolute;
@@ -1421,6 +2290,381 @@ const AgentPanel = ({ notebookTracker }) => {
                 .conversation-item .delete-btn:hover {
                     color: #d32f2f;
                     background: rgba(211, 47, 47, 0.1);
+                }
+                
+                /* ==================== ThoughtChain ==================== */
+                .thought-chain {
+                    margin: 8px 0 12px 28px;
+                    border: 1px solid var(--jp-border-color1, #e0e0e0);
+                    border-radius: 8px;
+                    overflow: hidden;
+                    background: var(--jp-layout-color0, #ffffff);
+                }
+                
+                .thought-chain-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 8px 12px;
+                    cursor: pointer;
+                    background: var(--jp-layout-color2, #f5f5f5);
+                    border-bottom: 1px solid transparent;
+                    transition: background 0.15s;
+                    user-select: none;
+                }
+                
+                .thought-chain-header:hover {
+                    background: var(--jp-layout-color3, #e8e8e8);
+                }
+                
+                .thought-chain-icon {
+                    display: flex;
+                    align-items: center;
+                    color: var(--jp-brand-color1, #1976d2);
+                }
+                
+                .thought-chain-spinner {
+                    width: 14px;
+                    height: 14px;
+                    border: 2px solid var(--jp-border-color1, #e0e0e0);
+                    border-top-color: var(--jp-brand-color1, #1976d2);
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                }
+                
+                .thought-chain-summary {
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: var(--jp-ui-font-color0, #333333);
+                }
+                
+                .thought-chain-count {
+                    font-size: 11px;
+                    color: var(--jp-ui-font-color2, #999999);
+                    background: var(--jp-layout-color3, #e0e0e0);
+                    padding: 1px 6px;
+                    border-radius: 10px;
+                }
+                
+                .thought-chain-arrow {
+                    margin-left: auto;
+                    color: var(--jp-ui-font-color2, #999999);
+                    transition: transform 0.2s ease;
+                }
+                
+                .thought-chain-arrow.expanded {
+                    transform: rotate(180deg);
+                }
+                
+                .thought-chain-steps {
+                    padding: 4px 0;
+                    border-top: 1px solid var(--jp-border-color1, #e0e0e0);
+                }
+                
+                .thought-step {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 6px 12px;
+                    font-size: 12px;
+                    transition: background 0.1s;
+                }
+                
+                .thought-step:hover {
+                    background: var(--jp-layout-color2, #f5f5f5);
+                }
+                
+                .thought-step-indicator {
+                    display: flex;
+                    align-items: center;
+                    flex-shrink: 0;
+                    width: 16px;
+                    justify-content: center;
+                }
+                
+                .step-spinner {
+                    width: 12px;
+                    height: 12px;
+                    border: 1.5px solid var(--jp-border-color1, #e0e0e0);
+                    border-top-color: var(--jp-brand-color1, #1976d2);
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                }
+                
+                .step-check {
+                    color: #4caf50;
+                }
+                
+                .step-error {
+                    color: #e53935;
+                }
+                
+                .thought-step-title {
+                    flex: 1;
+                    color: var(--jp-ui-font-color0, #333333);
+                    min-width: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                
+                .thought-step-time {
+                    font-size: 11px;
+                    color: var(--jp-ui-font-color2, #999999);
+                    flex-shrink: 0;
+                }
+                
+                .thought-step-badge {
+                    font-size: 10px;
+                    padding: 1px 6px;
+                    border-radius: 8px;
+                    flex-shrink: 0;
+                    font-weight: 500;
+                }
+                
+                .badge-done {
+                    background: #e8f5e9;
+                    color: #2e7d32;
+                }
+                
+                .badge-running {
+                    background: #e3f2fd;
+                    color: #1565c0;
+                    animation: badgePulse 1.5s ease-in-out infinite;
+                }
+                
+                .badge-error {
+                    background: #ffebee;
+                    color: #c62828;
+                }
+                
+                @keyframes badgePulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.5; }
+                }
+                
+                /* ==================== Attached Files ==================== */
+                .attached-files {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 6px;
+                    padding: 0 4px 8px 4px;
+                }
+                
+                .attached-file-chip {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    padding: 4px 8px;
+                    background: var(--jp-layout-color0, #ffffff);
+                    border: 1px solid var(--jp-border-color1, #e0e0e0);
+                    border-radius: 6px;
+                    font-size: 11px;
+                    color: var(--jp-ui-font-color0, #333333);
+                }
+                
+                .file-chip-name {
+                    max-width: 120px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    font-weight: 500;
+                }
+                
+                .file-chip-size {
+                    color: var(--jp-ui-font-color2, #999999);
+                }
+                
+                .file-chip-remove {
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    color: var(--jp-ui-font-color2, #999999);
+                    padding: 0 2px;
+                    font-size: 14px;
+                    line-height: 1;
+                }
+                
+                .file-chip-remove:hover {
+                    color: #e53935;
+                }
+                
+                .chip-success {
+                    border-color: #c8e6c9;
+                }
+                
+                .chip-error {
+                    border-color: #ffcdd2;
+                    background: #fff5f5;
+                }
+                
+                .chip-icon-ok {
+                    color: #4caf50;
+                }
+                
+                .chip-icon-err {
+                    color: #e53935;
+                }
+                
+                .chip-uploading {
+                    border-color: var(--jp-brand-color1, #1976d2);
+                    color: var(--jp-ui-font-color2, #999999);
+                    font-size: 11px;
+                }
+                
+                .chip-spinner {
+                    width: 10px;
+                    height: 10px;
+                    border: 1.5px solid var(--jp-border-color1, #e0e0e0);
+                    border-top-color: var(--jp-brand-color1, #1976d2);
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                }
+                
+                /* ==================== Attach Button ==================== */
+                .attach-btn {
+                    flex-shrink: 0;
+                    background: transparent;
+                    border: none;
+                    padding: 4px;
+                    cursor: pointer;
+                    color: var(--jp-ui-font-color2, #999999);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 4px;
+                    transition: color 0.15s;
+                }
+                
+                .attach-btn:hover:not(:disabled) {
+                    color: var(--jp-brand-color1, #1976d2);
+                }
+                
+                .attach-btn:disabled {
+                    opacity: 0.4;
+                    cursor: not-allowed;
+                }
+                
+                /* ==================== Model Selector ==================== */
+                .model-selector-bar {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    padding: 6px 0 0 0;
+                }
+                
+                /* Mode toggle button */
+                .mode-toggle-btn {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    background: transparent;
+                    border: 1px solid transparent;
+                    padding: 3px 8px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 11px;
+                    color: var(--jp-ui-font-color2, #999999);
+                    transition: all 0.15s;
+                    white-space: nowrap;
+                }
+                .mode-toggle-btn:hover:not(:disabled) {
+                    background: var(--jp-layout-color0, #ffffff);
+                    border-color: var(--jp-border-color1, #e0e0e0);
+                    color: var(--jp-ui-font-color0, #333333);
+                }
+                .mode-toggle-btn.agent {
+                    color: var(--jp-brand-color1, #1976d2);
+                }
+                .mode-toggle-btn.ask {
+                    color: var(--jp-success-color1, #388e3c);
+                }
+                .mode-toggle-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+                
+                .model-selector-wrapper {
+                    position: relative;
+                }
+                
+                .model-selector-btn {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    background: transparent;
+                    border: 1px solid transparent;
+                    padding: 3px 8px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 11px;
+                    color: var(--jp-ui-font-color2, #999999);
+                    transition: all 0.15s;
+                }
+                
+                .model-selector-btn:hover:not(:disabled) {
+                    background: var(--jp-layout-color0, #ffffff);
+                    border-color: var(--jp-border-color1, #e0e0e0);
+                    color: var(--jp-ui-font-color0, #333333);
+                }
+                
+                .model-selector-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+                
+                .model-arrow {
+                    transition: transform 0.2s ease;
+                }
+                
+                .model-arrow.expanded {
+                    transform: rotate(180deg);
+                }
+                
+                .model-dropdown {
+                    position: absolute;
+                    bottom: 100%;
+                    left: 0;
+                    min-width: 200px;
+                    max-height: 240px;
+                    overflow-y: auto;
+                    background: var(--jp-layout-color0, #ffffff);
+                    border: 1px solid var(--jp-border-color1, #e0e0e0);
+                    border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                    z-index: 200;
+                    padding: 4px;
+                    margin-bottom: 4px;
+                }
+                
+                .model-option {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    width: 100%;
+                    padding: 6px 10px;
+                    background: transparent;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 12px;
+                    color: var(--jp-ui-font-color0, #333333);
+                    text-align: left;
+                    transition: background 0.1s;
+                }
+                
+                .model-option:hover {
+                    background: var(--jp-layout-color2, #f5f5f5);
+                }
+                
+                .model-option.active {
+                    background: rgba(25, 118, 210, 0.08);
+                    color: var(--jp-brand-color1, #1976d2);
+                    font-weight: 500;
+                }
+                
+                .model-option.active svg {
+                    color: var(--jp-brand-color1, #1976d2);
                 }
             `)));
 };
@@ -1949,7 +3193,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _services_agentApi__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../services/agentApi */ "./lib/services/agentApi.js");
 /**
  * LLM Settings Panel
- * 用户配置 LLM API 的界面
+ * Configure LLM API for the assistant
  */
 
 
@@ -1966,7 +3210,7 @@ const LLMSettings = ({ onClose, onSaved }) => {
     const [saving, setSaving] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
     const [testing, setTesting] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
     const [message, setMessage] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null);
-    // 加载配置
+    // Load configuration
     (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
         loadData();
     }, []);
@@ -1980,14 +3224,14 @@ const LLMSettings = ({ onClose, onSaved }) => {
             setConfig(configData);
         }
         catch (error) {
-            console.error('加载配置失败:', error);
-            setMessage({ type: 'error', text: '加载配置失败' });
+            console.error('Failed to load LLM config:', error);
+            setMessage({ type: 'error', text: 'Failed to load configuration' });
         }
         finally {
             setLoading(false);
         }
     };
-    // 选择 Provider 时自动填充默认值
+    // Auto-fill defaults when provider changes
     const handleProviderChange = (provider) => {
         const providerInfo = providers[provider];
         setConfig(prev => ({
@@ -1995,39 +3239,39 @@ const LLMSettings = ({ onClose, onSaved }) => {
             provider,
             baseUrl: (providerInfo === null || providerInfo === void 0 ? void 0 : providerInfo.baseUrl) || '',
             model: (providerInfo === null || providerInfo === void 0 ? void 0 : providerInfo.defaultModel) || '',
-            // 保留已有的 apiKey
+            // Keep the existing API key
             apiKey: prev.apiKey
         }));
     };
-    // 保存配置
+    // Save configuration
     const handleSave = async () => {
         setSaving(true);
         setMessage(null);
         try {
             await _services_agentApi__WEBPACK_IMPORTED_MODULE_1__.agentApi.saveConfig(config);
-            setMessage({ type: 'success', text: '配置已保存' });
+            setMessage({ type: 'success', text: 'Configuration saved' });
             onSaved === null || onSaved === void 0 ? void 0 : onSaved();
         }
         catch (error) {
-            setMessage({ type: 'error', text: '保存失败' });
+            setMessage({ type: 'error', text: 'Failed to save configuration' });
         }
         finally {
             setSaving(false);
         }
     };
-    // 测试连接
+    // Test connection
     const handleTest = async () => {
         setTesting(true);
         setMessage(null);
         try {
-            // 先保存配置
+            // Save first to keep backend/runtime in sync
             await _services_agentApi__WEBPACK_IMPORTED_MODULE_1__.agentApi.saveConfig(config);
-            // 再测试
+            // Then test
             const result = await _services_agentApi__WEBPACK_IMPORTED_MODULE_1__.agentApi.testConnection();
-            setMessage({ type: 'success', text: `连接成功！模型: ${result.model}` });
+            setMessage({ type: 'success', text: `Connection successful. Model: ${result.model || 'unknown'}` });
         }
         catch (error) {
-            setMessage({ type: 'error', text: error.message || '连接测试失败' });
+            setMessage({ type: 'error', text: error.message || 'Connection test failed' });
         }
         finally {
             setTesting(false);
@@ -2036,33 +3280,30 @@ const LLMSettings = ({ onClose, onSaved }) => {
     const currentProvider = providers[config.provider || 'openai'];
     if (loading) {
         return (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "llm-settings-panel" },
-            react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "loading" }, "\u52A0\u8F7D\u4E2D...")));
+            react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "loading" }, "Loading...")));
     }
     return (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "llm-settings-panel" },
         react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "settings-header" },
-            react__WEBPACK_IMPORTED_MODULE_0__.createElement("h3", null, "\uD83E\uDD16 LLM \u914D\u7F6E"),
+            react__WEBPACK_IMPORTED_MODULE_0__.createElement("h3", null, "\uD83E\uDD16 LLM Configuration"),
             react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "close-btn", onClick: onClose }, "\u2715")),
         react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "settings-content" },
             react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "form-group" },
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("label", null, "LLM \u670D\u52A1\u5546"),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("label", null, "LLM Provider"),
                 react__WEBPACK_IMPORTED_MODULE_0__.createElement("select", { value: config.provider, onChange: (e) => handleProviderChange(e.target.value) }, Object.entries(providers).map(([key, provider]) => (react__WEBPACK_IMPORTED_MODULE_0__.createElement("option", { key: key, value: key }, provider.name))))),
             react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "form-group" },
                 react__WEBPACK_IMPORTED_MODULE_0__.createElement("label", null, "API Base URL"),
                 react__WEBPACK_IMPORTED_MODULE_0__.createElement("input", { type: "text", value: config.baseUrl, onChange: (e) => setConfig(prev => ({ ...prev, baseUrl: e.target.value })), placeholder: (currentProvider === null || currentProvider === void 0 ? void 0 : currentProvider.baseUrl) || 'https://api.openai.com/v1' }),
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("small", null, "\u7559\u7A7A\u4F7F\u7528\u9ED8\u8BA4\u5730\u5740")),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("small", null, "Leave empty to use the provider default")),
             !(currentProvider === null || currentProvider === void 0 ? void 0 : currentProvider.noApiKey) && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "form-group" },
                 react__WEBPACK_IMPORTED_MODULE_0__.createElement("label", null, "API Key"),
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("input", { type: "password", value: config.apiKey, onChange: (e) => setConfig(prev => ({ ...prev, apiKey: e.target.value })), placeholder: config.hasApiKey ? '***已配置*** (留空保持不变)' : '请输入 API Key' }))),
-            react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "form-group" },
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("label", null, "\u6A21\u578B"),
-                (currentProvider === null || currentProvider === void 0 ? void 0 : currentProvider.models) && currentProvider.models.length > 0 ? (react__WEBPACK_IMPORTED_MODULE_0__.createElement("select", { value: config.model, onChange: (e) => setConfig(prev => ({ ...prev, model: e.target.value })) }, currentProvider.models.map((model) => (react__WEBPACK_IMPORTED_MODULE_0__.createElement("option", { key: model, value: model }, model))))) : (react__WEBPACK_IMPORTED_MODULE_0__.createElement("input", { type: "text", value: config.model, onChange: (e) => setConfig(prev => ({ ...prev, model: e.target.value })), placeholder: "\u8F93\u5165\u6A21\u578B\u540D\u79F0" }))),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("input", { type: "password", value: config.apiKey, onChange: (e) => setConfig(prev => ({ ...prev, apiKey: e.target.value })), placeholder: config.hasApiKey ? '***Configured*** (keep empty to reuse)' : 'Enter API key' }))),
             message && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: `message ${message.type}` },
                 message.type === 'success' ? '✓' : '✕',
                 " ",
                 message.text)),
             react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", { className: "button-group" },
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "btn-secondary", onClick: handleTest, disabled: testing || saving }, testing ? '测试中...' : '🔗 测试连接'),
-                react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "btn-primary", onClick: handleSave, disabled: saving || testing }, saving ? '保存中...' : '💾 保存配置'))),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "btn-secondary", onClick: handleTest, disabled: testing || saving }, testing ? 'Testing...' : '🔗 Test Connection'),
+                react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", { className: "btn-primary", onClick: handleSave, disabled: saving || testing }, saving ? 'Saving...' : '💾 Save Configuration'))),
         react__WEBPACK_IMPORTED_MODULE_0__.createElement("style", null, `
                 .llm-settings-panel {
                     padding: 16px;
@@ -2474,7 +3715,7 @@ const plugin = {
             }
         });
         // ==================== Left Sidebar: AI Agent ====================
-        const agentWidget = new _agentWidget__WEBPACK_IMPORTED_MODULE_4__.AgentWidget(notebookTracker);
+        const agentWidget = new _agentWidget__WEBPACK_IMPORTED_MODULE_4__.AgentWidget(notebookTracker, app);
         agentWidget.id = 'geomodel-agent';
         agentWidget.title.icon = agentIcon;
         agentWidget.title.caption = 'OpenGeoLab AI Agent';
@@ -2512,11 +3753,13 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   addMessageToConversation: () => (/* binding */ addMessageToConversation),
 /* harmony export */   agentApi: () => (/* binding */ agentApi),
+/* harmony export */   askDirect: () => (/* binding */ askDirect),
 /* harmony export */   chat: () => (/* binding */ chat),
 /* harmony export */   chatWithHistory: () => (/* binding */ chatWithHistory),
 /* harmony export */   createConversation: () => (/* binding */ createConversation),
 /* harmony export */   deleteConversation: () => (/* binding */ deleteConversation),
 /* harmony export */   deleteSession: () => (/* binding */ deleteSession),
+/* harmony export */   getCases: () => (/* binding */ getCases),
 /* harmony export */   getConfig: () => (/* binding */ getConfig),
 /* harmony export */   getConversation: () => (/* binding */ getConversation),
 /* harmony export */   getProviders: () => (/* binding */ getProviders),
@@ -2583,7 +3826,7 @@ async function getProviders() {
         headers: getAuthHeaders()
     });
     if (!response.ok) {
-        throw new Error('获取 Provider 列表失败');
+        throw new Error('Failed to load provider list');
     }
     const data = await response.json();
     return data.providers;
@@ -2596,7 +3839,7 @@ async function getConfig() {
         headers: getAuthHeaders()
     });
     if (!response.ok) {
-        throw new Error('获取配置失败');
+        throw new Error('Failed to load configuration');
     }
     const data = await response.json();
     return data.config;
@@ -2614,7 +3857,7 @@ async function saveConfig(config) {
         body: JSON.stringify(config)
     });
     if (!response.ok) {
-        throw new Error('保存配置失败');
+        throw new Error('Failed to save configuration');
     }
 }
 /**
@@ -2630,7 +3873,7 @@ async function testConnection() {
     });
     const data = await response.json();
     if (!response.ok) {
-        throw new Error(data.error || '连接测试失败');
+        throw new Error(data.error || 'Connection test failed');
     }
     return data;
 }
@@ -2839,6 +4082,21 @@ function getUserInfo() {
 async function* chat(message, sessionId, context) {
     var _a;
     const url = `${getApiBase()}${API_BASE}/chat`;
+    const containerInfo = await extractContainerInfo();
+    const mergedContext = {
+        ...(context || {}),
+        projectName: (context === null || context === void 0 ? void 0 : context.projectName) || (containerInfo === null || containerInfo === void 0 ? void 0 : containerInfo.projectName) || '',
+        userName: (context === null || context === void 0 ? void 0 : context.userName) || (containerInfo === null || containerInfo === void 0 ? void 0 : containerInfo.userName) || ''
+    };
+    const requestBody = {
+        message,
+        sessionId,
+        context: mergedContext
+    };
+    if (containerInfo) {
+        requestBody.userName = containerInfo.userName;
+        requestBody.projectName = containerInfo.projectName;
+    }
     console.log('[AgentAPI] chat URL:', url);
     const response = await fetch(url, {
         method: 'POST',
@@ -2846,15 +4104,15 @@ async function* chat(message, sessionId, context) {
             'Content-Type': 'application/json',
             ...getAuthHeaders()
         },
-        body: JSON.stringify({ message, sessionId, context })
+        body: JSON.stringify(requestBody)
     });
     console.log('[AgentAPI] chat response status:', response.status);
     if (!response.ok) {
-        let errorMsg = '请求失败';
+        let errorMsg = 'Request failed';
         try {
             const error = await response.json();
             if (error.needConfig) {
-                yield { type: 'error', error: '请先配置 LLM API' };
+                yield { type: 'error', error: 'Please configure LLM API first' };
                 return;
             }
             errorMsg = error.error || errorMsg;
@@ -2902,6 +4160,19 @@ async function getTools() {
     }
     const data = await response.json();
     return data.tools;
+}
+/**
+ * Get curated smart cases for autonomous workflows
+ */
+async function getCases() {
+    const response = await fetch(`${getApiBase()}${API_BASE}/cases`, {
+        headers: getAuthHeaders()
+    });
+    if (!response.ok) {
+        throw new Error('Failed to fetch agent cases');
+    }
+    const data = await response.json();
+    return data.cases || [];
 }
 /**
  * 提交工具执行结果（流式响应，用于 Agent 循环）
@@ -3161,6 +4432,57 @@ async function* chatWithHistory(message, conversationId, userId = 'default', con
         yield { type: 'error', error: error.message || 'Unknown error' };
     }
 }
+/**
+ * Ask mode: 直接调用 LLM，不经过 Agent 工具循环
+ */
+async function* askDirect(message, history) {
+    var _a;
+    const url = `${getApiBase()}${API_BASE}/ask`;
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+        },
+        body: JSON.stringify({ message, history })
+    });
+    if (!response.ok) {
+        let errorMsg = 'Ask request failed';
+        try {
+            const error = await response.json();
+            errorMsg = error.error || errorMsg;
+        }
+        catch (e) {
+            // ignore
+        }
+        throw new Error(errorMsg);
+    }
+    const reader = (_a = response.body) === null || _a === void 0 ? void 0 : _a.getReader();
+    if (!reader) {
+        throw new Error('无法读取响应流');
+    }
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done)
+            break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+            if (line.startsWith('data:')) {
+                try {
+                    const data = JSON.parse(line.slice(5).trim());
+                    yield data;
+                }
+                catch (e) {
+                    // ignore parse errors
+                }
+            }
+        }
+    }
+}
 const agentApi = {
     getProviders,
     getConfig,
@@ -3168,6 +4490,8 @@ const agentApi = {
     testConnection,
     chat,
     chatWithHistory,
+    askDirect,
+    getCases,
     getTools,
     submitToolResult,
     submitToolResults,
@@ -4126,6 +5450,229 @@ print(result.json())`;
 
 /***/ }),
 
+/***/ "./lib/utils/markdownRenderer.js":
+/*!***************************************!*\
+  !*** ./lib/utils/markdownRenderer.js ***!
+  \***************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   renderMarkdown: () => (/* binding */ renderMarkdown)
+/* harmony export */ });
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "webpack/sharing/consume/default/react");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+/**
+ * Lightweight Markdown-to-React renderer
+ * Handles: **bold**, *italic*, `code`, headers, lists (nested), paragraphs, links
+ */
+
+/** Render inline markdown: **bold**, *italic*, `code`, [link](url) */
+function renderInline(text, baseKey = '') {
+    const parts = [];
+    // Regex handles: **bold**, *italic*, `code`, [text](url)
+    const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`\n]+?)`|\[([^\]]+?)\]\(([^)]+?)\))/g;
+    let lastIdx = 0;
+    let match;
+    let k = 0;
+    while ((match = regex.exec(text)) !== null) {
+        if (match.index > lastIdx) {
+            parts.push(text.slice(lastIdx, match.index));
+        }
+        if (match[2] !== undefined) {
+            // **bold**
+            parts.push(react__WEBPACK_IMPORTED_MODULE_0__.createElement("strong", { key: `${baseKey}b${k++}` }, renderInline(match[2], `${baseKey}b${k}`)));
+        }
+        else if (match[3] !== undefined) {
+            // *italic*
+            parts.push(react__WEBPACK_IMPORTED_MODULE_0__.createElement("em", { key: `${baseKey}i${k++}` }, renderInline(match[3], `${baseKey}i${k}`)));
+        }
+        else if (match[4] !== undefined) {
+            // `code`
+            parts.push(react__WEBPACK_IMPORTED_MODULE_0__.createElement("code", { key: `${baseKey}c${k++}`, className: "md-inline-code" }, match[4]));
+        }
+        else if (match[5] !== undefined && match[6] !== undefined) {
+            // [text](url)
+            parts.push(react__WEBPACK_IMPORTED_MODULE_0__.createElement("a", { key: `${baseKey}a${k++}`, href: match[6], target: "_blank", rel: "noopener noreferrer" }, match[5]));
+        }
+        lastIdx = match.index + match[0].length;
+    }
+    if (lastIdx < text.length) {
+        parts.push(text.slice(lastIdx));
+    }
+    if (parts.length === 0)
+        return text;
+    if (parts.length === 1)
+        return parts[0];
+    return react__WEBPACK_IMPORTED_MODULE_0__.createElement(react__WEBPACK_IMPORTED_MODULE_0__.Fragment, null, parts);
+}
+/**
+ * Render a markdown string to React elements.
+ * Handles: headings, bold, italic, inline code, bullet/numbered lists (with nesting), paragraphs.
+ */
+function renderMarkdown(text) {
+    const lines = text.split('\n');
+    const elements = [];
+    let keyIdx = 0;
+    // Accumulate list items with indent info
+    let listBuffer = [];
+    let paragraphBuffer = [];
+    const flushParagraph = () => {
+        if (paragraphBuffer.length > 0) {
+            const joined = paragraphBuffer.join('\n');
+            if (joined.trim()) {
+                elements.push(react__WEBPACK_IMPORTED_MODULE_0__.createElement("p", { key: `p${keyIdx++}` }, renderInline(joined, `p${keyIdx}`)));
+            }
+            paragraphBuffer = [];
+        }
+    };
+    const buildNestedList = (items) => {
+        if (items.length === 0)
+            return null;
+        const result = [];
+        let i = 0;
+        const baseIndent = items[0].indent;
+        const listType = items[0].type;
+        while (i < items.length) {
+            const item = items[i];
+            // Collect children (items with greater indent)
+            const children = [];
+            let j = i + 1;
+            while (j < items.length && items[j].indent > baseIndent) {
+                children.push(items[j]);
+                j++;
+            }
+            result.push(react__WEBPACK_IMPORTED_MODULE_0__.createElement("li", { key: `li${keyIdx++}` },
+                renderInline(item.text, `li${keyIdx}`),
+                children.length > 0 ? buildNestedList(children) : null));
+            i = j;
+        }
+        return listType === 'ol'
+            ? react__WEBPACK_IMPORTED_MODULE_0__.createElement("ol", { key: `ol${keyIdx++}` }, result)
+            : react__WEBPACK_IMPORTED_MODULE_0__.createElement("ul", { key: `ul${keyIdx++}` }, result);
+    };
+    const flushList = () => {
+        if (listBuffer.length > 0) {
+            const listEl = buildNestedList(listBuffer);
+            if (listEl)
+                elements.push(listEl);
+            listBuffer = [];
+        }
+    };
+    // Helper: check if a line is a table row
+    const isTableRow = (line) => {
+        const trimmed = line.trim();
+        return trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.length > 1;
+    };
+    // Helper: check if a line is a table separator (e.g. |---|---|---| or | :---: | --- |)
+    const isTableSeparator = (line) => {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('|') || !trimmed.endsWith('|'))
+            return false;
+        const inner = trimmed.slice(1, -1);
+        const cells = inner.split('|');
+        return cells.every(cell => /^\s*:?-{2,}:?\s*$/.test(cell));
+    };
+    // Helper: parse table cells from a row line
+    const parseTableCells = (line) => {
+        const trimmed = line.trim();
+        const inner = trimmed.slice(1, -1); // remove leading/trailing |
+        return inner.split('|').map(cell => cell.trim());
+    };
+    // Helper: flush a table buffer into a <table> element
+    const flushTable = (tableLines) => {
+        if (tableLines.length < 2) {
+            // Not enough lines for a table, treat as paragraphs
+            tableLines.forEach(l => paragraphBuffer.push(l));
+            return;
+        }
+        // Find separator line
+        let sepIdx = -1;
+        for (let ti = 0; ti < tableLines.length; ti++) {
+            if (isTableSeparator(tableLines[ti])) {
+                sepIdx = ti;
+                break;
+            }
+        }
+        const headerRows = sepIdx > 0 ? tableLines.slice(0, sepIdx) : [];
+        const bodyRows = sepIdx >= 0 ? tableLines.slice(sepIdx + 1) : tableLines;
+        elements.push(react__WEBPACK_IMPORTED_MODULE_0__.createElement("table", { key: `tbl${keyIdx++}`, className: "md-table" },
+            headerRows.length > 0 && (react__WEBPACK_IMPORTED_MODULE_0__.createElement("thead", null, headerRows.map((row, ri) => (react__WEBPACK_IMPORTED_MODULE_0__.createElement("tr", { key: `thr${keyIdx++}` }, parseTableCells(row).map((cell, ci) => (react__WEBPACK_IMPORTED_MODULE_0__.createElement("th", { key: `th${keyIdx++}` }, renderInline(cell, `th${keyIdx}`))))))))),
+            react__WEBPACK_IMPORTED_MODULE_0__.createElement("tbody", null, bodyRows.map((row, ri) => (react__WEBPACK_IMPORTED_MODULE_0__.createElement("tr", { key: `tbr${keyIdx++}` }, parseTableCells(row).map((cell, ci) => (react__WEBPACK_IMPORTED_MODULE_0__.createElement("td", { key: `td${keyIdx++}` }, renderInline(cell, `td${keyIdx}`))))))))));
+    };
+    let tableBuffer = [];
+    const flushTableBuffer = () => {
+        if (tableBuffer.length > 0) {
+            flushTable(tableBuffer);
+            tableBuffer = [];
+        }
+    };
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // Table row detection (must come before other matchers)
+        if (isTableRow(line) || (tableBuffer.length > 0 && isTableSeparator(line))) {
+            flushParagraph();
+            flushList();
+            tableBuffer.push(line);
+            continue;
+        }
+        else if (tableBuffer.length > 0) {
+            // End of table
+            flushTableBuffer();
+        }
+        // Horizontal rule: --- or *** or ___
+        if (/^(\s*[-*_]){3,}\s*$/.test(line)) {
+            flushParagraph();
+            flushList();
+            elements.push(react__WEBPACK_IMPORTED_MODULE_0__.createElement("hr", { key: `hr${keyIdx++}` }));
+            continue;
+        }
+        // Heading: # to ####
+        const headingMatch = line.match(/^(#{1,4})\s+(.+)/);
+        if (headingMatch) {
+            flushParagraph();
+            flushList();
+            const level = headingMatch[1].length;
+            const HeadTag = (`h${level}`);
+            elements.push(react__WEBPACK_IMPORTED_MODULE_0__.createElement(HeadTag, { key: `h${keyIdx++}` }, renderInline(headingMatch[2], `h${keyIdx}`)));
+            continue;
+        }
+        // Unordered list: leading spaces/tabs + - or * followed by space
+        const ulMatch = line.match(/^(\s*)([-*])\s+(.+)/);
+        if (ulMatch) {
+            flushParagraph();
+            const indent = ulMatch[1].length;
+            listBuffer.push({ indent, type: 'ul', text: ulMatch[3] });
+            continue;
+        }
+        // Ordered list: leading spaces + number. + space
+        const olMatch = line.match(/^(\s*)(\d+)\.\s+(.+)/);
+        if (olMatch) {
+            flushParagraph();
+            const indent = olMatch[1].length;
+            listBuffer.push({ indent, type: 'ol', text: olMatch[3] });
+            continue;
+        }
+        // Empty line
+        if (line.trim() === '') {
+            flushList();
+            flushParagraph();
+            continue;
+        }
+        // Regular text — if we're in a list context and this line is continuation, 
+        // treat as new paragraph
+        flushList();
+        paragraphBuffer.push(line);
+    }
+    flushTableBuffer();
+    flushList();
+    flushParagraph();
+    return elements;
+}
+
+
+/***/ }),
+
 /***/ "./lib/widget.js":
 /*!***********************!*\
   !*** ./lib/widget.js ***!
@@ -4168,4 +5715,4 @@ class GeoModelWidget extends _jupyterlab_apputils__WEBPACK_IMPORTED_MODULE_0__.R
 /***/ })
 
 }]);
-//# sourceMappingURL=lib_index_js.3ef96c3041aa4c0ff12c.js.map
+//# sourceMappingURL=lib_index_js.06af641288ffa6c9a79d.js.map

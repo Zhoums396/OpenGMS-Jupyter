@@ -1,0 +1,137 @@
+[
+  {
+    "id": "full-project-bootstrap",
+    "title": "🚀 Project Bootstrap from Scratch",
+    "category": "Engineering",
+    "difficulty": "Advanced",
+    "goal": "Let the agent create a complete, runnable geospatial analysis project from scratch — demonstrating the full autonomous think→explore→plan→execute→verify→finish workflow.",
+    "starterPrompt": "Create a complete geospatial analysis project in my workspace. The project should:\n1. First inspect what's already in the workspace (list files, check for existing data)\n2. Create a proper project structure: src/ for code, data/ for inputs, outputs/ for results, docs/ for documentation\n3. Write a requirements.txt with common geo libraries (geopandas, rasterio, matplotlib, numpy, shapely)\n4. Write a main analysis script (src/analyze.py) that demonstrates reading geo data and producing a simple output\n5. Write a README.md with setup instructions and project description\n6. Install the dependencies via pip\n7. Run a quick validation to make sure the setup works\n8. Add a summary notebook cell showing the project structure\n\nDo all of this autonomously — think through your approach first, then execute step by step, verify each change, and finish with a summary.",
+    "expectedTools": [
+      "think",
+      "list_project_files",
+      "write_project_file",
+      "run_terminal_command",
+      "read_project_file",
+      "add_code_cell",
+      "add_markdown_cell",
+      "finish"
+    ],
+    "acceptanceCriteria": [
+      "Agent uses think tool to plan before creating",
+      "Agent explores workspace before creating anything",
+      "Creates at least 4 files (structure, code, requirements, docs)",
+      "Runs pip install to set up the environment",
+      "Runs a validation command (python -c or script execution)",
+      "Uses finish tool with a complete summary"
+    ]
+  },
+  {
+    "id": "codebase-audit-and-fix",
+    "title": "🔍 Codebase Audit & Auto-Fix",
+    "category": "Engineering",
+    "difficulty": "Advanced",
+    "goal": "The agent performs a full codebase audit: finds issues, fixes them surgically with edit/insert/undo, validates, and produces a report.",
+    "starterPrompt": "Perform a comprehensive audit of this project:\n1. Think through what kinds of issues to look for\n2. List all project files and understand the structure\n3. Read the key source files (Python scripts, config files)\n4. Use grep to find common issues: TODO/FIXME comments, print() debug statements, hardcoded paths, missing error handling\n5. For each issue found, apply a fix using edit_project_file (surgical patch)\n6. If an edit makes things worse, use undo_project_edit to revert\n7. Run linting/tests if available, or at least `python -m py_compile` on changed files\n8. Write a CHANGELOG.md summarizing all changes made\n9. Finish with a structured report\n\nWork autonomously through the entire process, thinking between phases.",
+    "expectedTools": [
+      "think",
+      "list_project_files",
+      "read_project_file",
+      "grep_project_files",
+      "edit_project_file",
+      "undo_project_edit",
+      "run_terminal_command",
+      "write_project_file",
+      "finish"
+    ],
+    "acceptanceCriteria": [
+      "Agent uses think to plan the audit strategy",
+      "Agent uses grep to systematically find issues",
+      "Uses edit_project_file for surgical patches",
+      "Validates changes via compile/lint/test commands",
+      "Uses undo_project_edit if a fix breaks something",
+      "Produces a CHANGELOG.md with all changes",
+      "Handles at least 3 different types of issues"
+    ]
+  },
+  {
+    "id": "ogms-model-e2e-pipeline",
+    "title": "🌍 End-to-End OGMS Model Pipeline",
+    "category": "GeoAI",
+    "difficulty": "Intermediate",
+    "goal": "Autonomously discover, configure, and run an OpenGMS geospatial model — from searching to execution, with data matching and result analysis.",
+    "starterPrompt": "Help me run a geospatial analysis using an OpenGMS model. Here's what I need:\n1. First think about what kind of analysis might be possible\n2. Check what data files are available in my workspace\n3. Based on the available data, search for suitable OpenGMS models\n4. Pick the best matching model and get its detailed parameter info\n5. Map my workspace data files to the model's input parameters\n6. Generate and insert a complete model invocation notebook cell with proper error handling\n7. Add a markdown cell explaining what the model does and what each parameter means\n8. If the model needs data I don't have, tell me exactly what's missing\n\nDo this end-to-end autonomously.",
+    "expectedTools": [
+      "think",
+      "list_project_files",
+      "search_models",
+      "get_model_info",
+      "add_code_cell",
+      "add_markdown_cell",
+      "finish"
+    ],
+    "acceptanceCriteria": [
+      "Agent uses think to reason about data-model matching",
+      "Agent inspects workspace data before searching models",
+      "Calls search_models and get_model_info in sequence",
+      "Correctly maps data files to model parameters",
+      "Generated code includes all required parameters",
+      "Includes error handling in the generated code",
+      "Adds documentation explaining the model"
+    ]
+  },
+  {
+    "id": "multi-file-refactor",
+    "title": "🔧 Multi-File Refactor with Verification",
+    "category": "Engineering",
+    "difficulty": "Expert",
+    "goal": "Demonstrate long reflection-iteration chains: the agent restructures a codebase across multiple files, running verification at each step, using think/undo/finish for quality control.",
+    "starterPrompt": "I need you to refactor this project to improve code quality:\n1. First explore the entire project and understand the architecture\n2. Think carefully about what improvements are needed (separation of concerns, DRY principle, better error handling)\n3. Plan the refactoring in phases — each phase should be independently verifiable\n4. Phase 1: Extract utility functions into a utils.py module\n5. Phase 2: Add proper logging (replace print statements with logging module)\n6. Phase 3: Add type hints to all function signatures\n7. Phase 4: Add docstrings to all public functions\n8. After each phase, run validation (py_compile, import test). If it fails, undo and try again.\n9. Write a REFACTOR_NOTES.md documenting all changes\n10. Finish with a complete summary\n\nThis is a complex task — take your time, think between phases, and don't rush.",
+    "expectedTools": [
+      "think",
+      "list_project_files",
+      "read_project_file",
+      "grep_project_files",
+      "edit_project_file",
+      "insert_project_lines",
+      "undo_project_edit",
+      "write_project_file",
+      "run_terminal_command",
+      "finish"
+    ],
+    "acceptanceCriteria": [
+      "Agent uses think tool at least 3 times throughout the process",
+      "Agent works in phases with verification between each",
+      "Uses edit_project_file for surgical changes across multiple files",
+      "Uses undo_project_edit when a change breaks verification",
+      "Runs py_compile or tests after each phase",
+      "Produces REFACTOR_NOTES.md",
+      "Uses finish with detailed summary of all phases"
+    ]
+  },
+  {
+    "id": "data-pipeline-with-viz",
+    "title": "📊 Data Pipeline with Visualization",
+    "category": "Data Science",
+    "difficulty": "Intermediate",
+    "goal": "Build a complete data processing pipeline with visualization, demonstrating the agent's ability to create multi-step data workflows in notebooks.",
+    "starterPrompt": "Build a data analysis pipeline for the geospatial data in my workspace:\n1. Explore my workspace to find available data files\n2. Think about what analysis would be most interesting given the data\n3. Create a data processing pipeline that:\n   a. Loads and inspects the data (add notebook cells showing data structure/stats)\n   b. Cleans/preprocesses the data (handle missing values, coordinate transforms)\n   c. Performs a meaningful analysis (spatial statistics, classification, clustering, etc.)\n   d. Creates at least 2 visualizations (maps, charts, plots)\n4. Export the results to the outputs/ directory\n5. Add markdown cells documenting each step\n6. Save the pipeline as a reusable script in src/pipeline.py\n\nMake it a professional, well-documented analysis.",
+    "expectedTools": [
+      "think",
+      "list_project_files",
+      "read_project_file",
+      "write_project_file",
+      "add_code_cell",
+      "add_markdown_cell",
+      "run_terminal_command",
+      "finish"
+    ],
+    "acceptanceCriteria": [
+      "Agent explores data before designing the pipeline",
+      "Creates multiple notebook cells in logical order",
+      "Includes data loading, processing, analysis, and visualization",
+      "Generates at least 2 visualization code cells",
+      "Saves reusable script to src/pipeline.py",
+      "Adds markdown documentation between code cells"
+    ]
+  }
+]

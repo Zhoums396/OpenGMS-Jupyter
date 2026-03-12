@@ -13,10 +13,12 @@ import { AgentPanel } from './components/AgentPanel';
  */
 export class AgentWidget extends ReactWidget {
     private _notebookTracker: INotebookTracker | null = null;
+    private _app: any = null;
 
-    constructor(notebookTracker?: INotebookTracker) {
+    constructor(notebookTracker?: INotebookTracker, app?: any) {
         super();
         this._notebookTracker = notebookTracker || null;
+        this._app = app || null;
         this.addClass('jp-AgentWidget');
         this.id = 'opengeolab-agent';
         this.title.label = '';  // 不显示文字，只显示图标
@@ -40,6 +42,7 @@ export class AgentWidget extends ReactWidget {
         return (
             <AgentPanel 
                 notebookTracker={this._notebookTracker || undefined}
+                app={this._app || undefined}
             />
         );
     }

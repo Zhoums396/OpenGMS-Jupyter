@@ -6,6 +6,8 @@ import JupyterDashboard from '../views/JupyterDashboard.vue'
 import JupyterCallback from '../views/JupyterCallback.vue'
 import JupyterProject from '../views/JupyterProject.vue'
 import SharedProjectPreview from '../views/SharedProjectPreview.vue'
+import CaseLibrary from '../views/CaseLibrary.vue'
+import CaseDetail from '../views/CaseDetail.vue'
 
 const routes = [
     {
@@ -50,6 +52,18 @@ const routes = [
         name: 'SharedProjectPreview',
         component: SharedProjectPreview,
         meta: { title: 'Shared Project', hideMainNav: true }
+    },
+    {
+        path: '/jupyter/cases',
+        name: 'CaseLibrary',
+        component: CaseLibrary,
+        meta: { title: 'Case Library', hideMainNav: true }
+    },
+    {
+        path: '/jupyter/cases/:owner/:projectName',
+        name: 'CaseDetail',
+        component: CaseDetail,
+        meta: { title: 'Case Detail', hideMainNav: true }
     }
 ]
 

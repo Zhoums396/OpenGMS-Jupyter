@@ -26,29 +26,64 @@ const LLM_PROVIDERS = {
     openai: {
         name: 'OpenAI',
         baseUrl: 'https://api.openai.com/v1',
-        models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+        models: ['gpt-4o-mini', 'gpt-4o'],
         defaultModel: 'gpt-4o-mini'
     },
     deepseek: {
         name: 'DeepSeek',
         baseUrl: 'https://api.deepseek.com/v1',
-        models: ['deepseek-chat', 'deepseek-coder'],
+        models: ['deepseek-chat'],
         defaultModel: 'deepseek-chat'
     },
     aihubmix: {
         name: 'AiHubMix',
         baseUrl: 'https://api.aihubmix.com/v1',
-        models: ['deepseek-chat', 'gpt-4o-mini', 'claude-3-5-sonnet'],
-        defaultModel: 'deepseek-chat'
+        models: ['gpt-4o-mini', 'claude-3-5-sonnet', 'deepseek-chat', 'alicloud-qwen3.5-plus'],
+        defaultModel: 'gpt-4o-mini'
     },
     ollama: {
         name: 'Ollama (本地)',
         baseUrl: 'http://localhost:11434/v1',
-        models: ['qwen2.5:7b', 'llama3', 'mistral'],
+        models: ['qwen2.5:7b', 'llama3'],
         defaultModel: 'qwen2.5:7b',
         noApiKey: true
     }
 };
+
+function ensureUserDataDir() {
+    if (!fs.existsSync(USER_DATA_DIR)) {
+        fs.mkdirSync(USER_DATA_DIR, { recursive: true });
+    }
+}
+
+function normalizeBaseUrl(baseUrl, providerKey) {
+    const provider = LLM_PROVIDERS[providerKey] || {};
+    const fallback = provider.baseUrl || '';
+    const input = (baseUrl || '').trim();
+    let normalized = input || fallback;
+    normalized = normalized.replace(/\/+$/, '');
+
+    // Common typo fix for AiHubMix.
+    if (providerKey === 'aihubmix' && /^https?:\/\/aihubmix\.com\/v1$/i.test(normalized)) {
+        normalized = 'https://api.aihubmix.com/v1';
+    }
+
+    return normalized;
+}
+
+function normalizeLLMConfig(raw = {}) {
+    const provider = LLM_PROVIDERS[raw.provider] ? raw.provider : 'openai';
+    const providerInfo = LLM_PROVIDERS[provider];
+    const model = raw.model || providerInfo.defaultModel;
+    const baseUrl = normalizeBaseUrl(raw.baseUrl, provider);
+    const apiKey = raw.apiKey || '';
+    return {
+        provider,
+        apiKey,
+        baseUrl,
+        model
+    };
+}
 
 function loadLLMConfigs() {
     try {
@@ -63,25 +98,45 @@ function loadLLMConfigs() {
 
 function saveLLMConfigs(configs) {
     try {
+        ensureUserDataDir();
         fs.writeFileSync(LLM_CONFIG_FILE, JSON.stringify(configs, null, 2));
     } catch (e) {
         console.error('Error saving LLM configs:', e);
     }
 }
 
+function getUserConfig(userId) {
+    const configs = loadLLMConfigs();
+    const fallback = {
+        provider: 'openai',
+        apiKey: '',
+        baseUrl: LLM_PROVIDERS.openai.baseUrl,
+        model: LLM_PROVIDERS.openai.defaultModel
+    };
+    return normalizeLLMConfig(configs[userId] || fallback);
+}
+
 router.get('/providers', (req, res) => {
     res.json({ providers: LLM_PROVIDERS });
 });
 
+/**
+ * GET /api/agent/cases
+ * Proxy curated smart cases from Python agent service
+ */
+router.get('/cases', async (req, res) => {
+    try {
+        const response = await agentAxios.get(`${AGENT_SERVICE_URL}/api/agent/cases`, { timeout: 10000 });
+        res.json(response.data);
+    } catch (error) {
+        console.error('[Agent] List cases error:', error.message);
+        res.status(500).json({ error: error.message, cases: [] });
+    }
+});
+
 router.get('/config', (req, res) => {
     const userId = req.user?.userId || 'default';
-    const configs = loadLLMConfigs();
-    const userConfig = configs[userId] || {
-        provider: 'aihubmix',
-        apiKey: '',
-        baseUrl: 'https://api.aihubmix.com/v1',
-        model: 'deepseek-chat'
-    };
+    const userConfig = getUserConfig(userId);
     res.json({ config: userConfig });
 });
 
@@ -90,10 +145,17 @@ router.post('/config', (req, res) => {
     const { provider, apiKey, baseUrl, model } = req.body;
     
     const configs = loadLLMConfigs();
-    configs[userId] = { provider, apiKey, baseUrl, model };
+    const existing = getUserConfig(userId);
+    configs[userId] = normalizeLLMConfig({
+        ...existing,
+        provider,
+        baseUrl,
+        model,
+        apiKey: apiKey === undefined ? existing.apiKey : apiKey
+    });
     saveLLMConfigs(configs);
     
-    res.json({ success: true });
+    res.json({ success: true, config: configs[userId] });
 });
 
 /**
@@ -102,24 +164,165 @@ router.post('/config', (req, res) => {
  */
 router.post('/test', async (req, res) => {
     try {
-        // 直接测试 Python LangGraph 后端的健康状态
-        const healthCheck = await agentAxios.get(`${AGENT_SERVICE_URL}/health`, { timeout: 5000 });
-        
-        if (healthCheck.data.status === 'ok') {
-            res.json({ 
-                success: true, 
-                model: 'deepseek-chat (via LangGraph)',
-                message: 'LangGraph Agent 服务连接正常'
+        const userId = req.user?.userId || 'default';
+        const userConfig = getUserConfig(userId);
+        const provider = LLM_PROVIDERS[userConfig.provider] || {};
+        const baseUrl = userConfig.baseUrl || provider.baseUrl;
+        const model = userConfig.model || provider.defaultModel;
+
+        if (!baseUrl || !model) {
+            return res.status(400).json({
+                success: false,
+                error: 'LLM base URL or model is missing'
             });
-        } else {
-            throw new Error('Agent 服务状态异常');
         }
+
+        if (!provider.noApiKey && !userConfig.apiKey) {
+            return res.status(400).json({
+                success: false,
+                error: 'API key is required for the selected provider'
+            });
+        }
+
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (!provider.noApiKey) {
+            headers.Authorization = `Bearer ${userConfig.apiKey}`;
+        }
+
+        const response = await agentAxios.post(
+            `${baseUrl}/chat/completions`,
+            {
+                model,
+                messages: [{ role: 'user', content: 'Reply with OK.' }],
+                max_tokens: 8,
+                temperature: 0
+            },
+            {
+                headers,
+                timeout: 10000
+            }
+        );
+
+        res.json({
+            success: true,
+            message: 'Connection successful',
+            model: response.data?.model || model
+        });
     } catch (error) {
-        console.error('[Agent Test] Error:', error.message);
+        const detail = error.response?.data || error.message;
+        console.error('[Agent Test] Error:', detail);
         res.status(500).json({ 
             success: false, 
-            error: error.message || '连接测试失败'
+            error: typeof detail === 'string' ? detail : JSON.stringify(detail)
         });
+    }
+});
+
+// ==================== Ask mode: simple Q&A (no tools) ====================
+
+/**
+ * POST /api/agent/ask
+ * Simple streaming chat — directly calls LLM without agent-service tool loop
+ */
+router.post('/ask', async (req, res) => {
+    const { message, history } = req.body;
+    const userId = req.user?.userId || 'default';
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    try {
+        const userConfig = getUserConfig(userId);
+        const provider = LLM_PROVIDERS[userConfig.provider] || {};
+        const baseUrl = userConfig.baseUrl || provider.baseUrl;
+        const model = userConfig.model || provider.defaultModel;
+
+        if (!baseUrl || !model) {
+            res.write(`event: error\ndata: ${JSON.stringify({ type: 'error', error: 'LLM not configured. Please set provider and model in settings.' })}\n\n`);
+            return res.end();
+        }
+        if (!provider.noApiKey && !userConfig.apiKey) {
+            res.write(`event: error\ndata: ${JSON.stringify({ type: 'error', error: 'API key is required. Please configure in settings.' })}\n\n`);
+            return res.end();
+        }
+
+        const headers = { 'Content-Type': 'application/json' };
+        if (!provider.noApiKey) {
+            headers.Authorization = `Bearer ${userConfig.apiKey}`;
+        }
+
+        // Build messages array: optional history + current message
+        const messages = [];
+        messages.push({ role: 'system', content: 'You are a helpful geospatial analysis assistant. Answer questions clearly and concisely. Use Chinese if the user speaks Chinese.' });
+        if (history && Array.isArray(history)) {
+            for (const h of history.slice(-10)) { // Keep last 10 messages for context
+                messages.push({ role: h.role, content: h.content });
+            }
+        }
+        messages.push({ role: 'user', content: message });
+
+        const response = await agentAxios({
+            method: 'POST',
+            url: `${baseUrl}/chat/completions`,
+            data: {
+                model,
+                messages,
+                stream: true,
+                temperature: 0.7,
+                max_tokens: 4096
+            },
+            headers,
+            responseType: 'stream',
+            timeout: 120000
+        });
+
+        let buffer = '';
+
+        response.data.on('data', chunk => {
+            buffer += chunk.toString();
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || !trimmed.startsWith('data:')) continue;
+                const data = trimmed.slice(5).trim();
+                if (data === '[DONE]') {
+                    res.write(`event: message\ndata: ${JSON.stringify({ type: 'done' })}\n\n`);
+                    continue;
+                }
+                try {
+                    const parsed = JSON.parse(data);
+                    const delta = parsed.choices?.[0]?.delta;
+                    if (delta?.content) {
+                        res.write(`event: message\ndata: ${JSON.stringify({ type: 'text', content: delta.content })}\n\n`);
+                    }
+                } catch (e) {
+                    // Skip malformed chunks
+                }
+            }
+        });
+
+        response.data.on('end', () => {
+            res.write(`event: message\ndata: ${JSON.stringify({ type: 'done' })}\n\n`);
+            res.end();
+        });
+
+        response.data.on('error', err => {
+            console.error('[Ask] Stream error:', err);
+            res.write(`event: error\ndata: ${JSON.stringify({ type: 'error', error: err.message })}\n\n`);
+            res.end();
+        });
+
+    } catch (error) {
+        const detail = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+        console.error('[Ask] Error:', detail);
+        res.write(`event: error\ndata: ${JSON.stringify({ type: 'error', error: detail })}\n\n`);
+        res.end();
     }
 });
 
@@ -132,7 +335,18 @@ router.post('/test', async (req, res) => {
 router.post('/chat', async (req, res) => {
     const { message, sessionId, context } = req.body;
     const userId = req.user?.userId;
-    const userName = req.user?.userName || req.user?.login;
+    const userName =
+        req.body?.userName ||
+        context?.userName ||
+        req.user?.userName ||
+        req.user?.login ||
+        req.query?.user ||
+        req.headers['x-user-name'];
+    const projectName =
+        req.body?.projectName ||
+        context?.projectName ||
+        req.query?.project ||
+        '';
     
     // 设置 SSE 响应头
     res.setHeader('Content-Type', 'text/event-stream');
@@ -141,6 +355,9 @@ router.post('/chat', async (req, res) => {
     res.setHeader('X-Accel-Buffering', 'no');
     
     try {
+        const effectiveUserId = userId || 'default';
+        const userConfig = getUserConfig(effectiveUserId);
+
         // 代理请求到 Python 后端
         const response = await agentAxios({
             method: 'POST',
@@ -148,10 +365,16 @@ router.post('/chat', async (req, res) => {
             data: {
                 message,
                 session_id: sessionId,
-                user_id: userId,
+                user_id: effectiveUserId,
                 user_name: userName,
-                project_name: context?.projectName,
-                context: context
+                project_name: projectName,
+                context: context,
+                llm_config: {
+                    provider: userConfig.provider,
+                    model: userConfig.model,
+                    base_url: userConfig.baseUrl,
+                    api_key: userConfig.apiKey
+                }
             },
             responseType: 'stream',
             headers: {
@@ -202,7 +425,8 @@ router.post('/tool-results', async (req, res) => {
                 session_id: sessionId,
                 tool_results: toolResults.map(r => ({
                     tool_call_id: r.toolCallId,
-                    result: r.result
+                    result: r.result,
+                    ...(r.images && { images: r.images })
                 }))
             },
             responseType: 'stream',

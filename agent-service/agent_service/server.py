@@ -6,6 +6,7 @@ import json
 import uuid
 from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,6 +18,7 @@ from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, ToolMessage
 
 from .agent import get_agent
+from .tools import FRONTEND_TOOLS, FINISH_TOOL_NAME
 from .state import NotebookContext
 from .history import (
     get_conversation_store, 
@@ -67,12 +69,13 @@ class ChatRequest(BaseModel):
     user_name: Optional[str] = None
     project_name: Optional[str] = None
     context: Optional[Dict[str, Any]] = None
+    llm_config: Optional[Dict[str, Any]] = None
 
 
 class ToolResultRequest(BaseModel):
     """工具执行结果"""
     session_id: str
-    tool_results: List[Dict[str, str]]  # [{"tool_call_id": "xxx", "result": "xxx"}]
+    tool_results: List[Dict[str, Any]]  # [{"tool_call_id": "xxx", "result": "xxx", "images": ["base64..."]}]
 
 
 class ChatResponse(BaseModel):
@@ -89,6 +92,50 @@ class ChatResponse(BaseModel):
 async def health_check():
     """健康检查"""
     return {"status": "ok", "service": "geomodel-agent"}
+
+
+def _extract_finish_message(state_values: dict) -> str:
+    """Extract the finish summary message from agent state.
+    
+    When the agent calls finish(message=...), the tool result is stored as
+    'FINISH: <message>'. This function extracts that message to surface it
+    to the user when no streaming text was generated.
+    
+    Only looks at messages after the last HumanMessage to avoid picking up
+    finish messages from previous tasks in the same session.
+    """
+    messages = state_values.get("messages", [])
+    
+    # Find the last HumanMessage index
+    last_human_idx = -1
+    for i in range(len(messages) - 1, -1, -1):
+        if isinstance(msg := messages[i], HumanMessage):
+            last_human_idx = i
+            break
+    
+    recent_msgs = messages[last_human_idx + 1:] if last_human_idx >= 0 else messages[-10:]
+    for msg in reversed(recent_msgs):
+        if isinstance(msg, ToolMessage) and getattr(msg, "name", "") == FINISH_TOOL_NAME:
+            content = msg.content or ""
+            if content.startswith("FINISH:"):
+                return content[len("FINISH:"):].strip()
+    return ""
+
+
+@app.get("/api/agent/cases")
+async def list_agent_cases():
+    """
+    Return curated smart cases for autonomous project operations.
+    """
+    cases_file = Path(__file__).resolve().parents[1] / "data" / "agent_cases.json"
+    if not cases_file.exists():
+        return {"cases": []}
+    try:
+        with cases_file.open("r", encoding="utf-8") as f:
+            cases = json.load(f)
+        return {"cases": cases}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load cases: {e}")
 
 
 @app.post("/api/agent/chat")
@@ -113,6 +160,7 @@ async def chat(request: ChatRequest):
                 "user_name": request.user_name,
                 "project_name": request.project_name,
                 "notebook_context": request.context,
+                "llm_config": request.llm_config,
                 "pending_tool_calls": [],
                 "tool_results": [],
                 "session_id": session_id,
@@ -143,32 +191,49 @@ async def chat(request: ChatRequest):
                     output = event["data"]["output"]
                     if hasattr(output, "tool_calls") and output.tool_calls:
                         for tool_call in output.tool_calls:
-                            tool_data = {
-                                "id": tool_call["id"],
-                                "name": tool_call["name"],
-                                "arguments": json.dumps(tool_call["args"], ensure_ascii=False)
-                            }
-                            pending_tools.append(tool_data)
-                            yield {
-                                "event": "tool_call",
-                                "data": json.dumps({
-                                    "type": "tool_call",
-                                    "tool": tool_data
-                                }, ensure_ascii=False)
-                            }
+                            # Only emit SSE tool_call events for frontend tools
+                            # Backend tools are executed internally by tool_router
+                            if tool_call["name"] in FRONTEND_TOOLS:
+                                tool_data = {
+                                    "id": tool_call["id"],
+                                    "name": tool_call["name"],
+                                    "arguments": json.dumps(tool_call["args"], ensure_ascii=False)
+                                }
+                                pending_tools.append(tool_data)
+                                yield {
+                                    "event": "tool_call",
+                                    "data": json.dumps({
+                                        "type": "tool_call",
+                                        "tool": tool_data
+                                    }, ensure_ascii=False)
+                                }
             
             # 获取最终状态
             final_state = await agent.aget_state(config)
             pending_from_state = final_state.values.get("pending_tool_calls", [])
             
-            # 发送完成事件
+            # If no streaming text was generated, check for finish summary
+            if not full_content and len(pending_from_state) == 0:
+                finish_msg = _extract_finish_message(final_state.values)
+                if finish_msg:
+                    full_content = finish_msg
+                    # Also send it as a text event so the frontend can display it
+                    yield {
+                        "event": "text",
+                        "data": json.dumps({
+                            "type": "text",
+                            "content": finish_msg
+                        }, ensure_ascii=False)
+                    }
+            
+            # 发送完成事件 — use authoritative state, not SSE-accumulated tool calls
             yield {
                 "event": "done",
                 "data": json.dumps({
                     "type": "done",
                     "sessionId": session_id,
                     "content": full_content,
-                    "toolCalls": pending_from_state or pending_tools,
+                    "toolCalls": pending_from_state,
                     "isComplete": len(pending_from_state) == 0
                 }, ensure_ascii=False)
             }
@@ -203,6 +268,33 @@ async def submit_tool_results(request: ToolResultRequest):
             
             # 创建 tool_call_id -> result 的映射
             result_map = {r["tool_call_id"]: r["result"] for r in request.tool_results}
+            # 创建 tool_call_id -> images 的映射（用于视觉检测）
+            images_map = {r["tool_call_id"]: r.get("images", []) for r in request.tool_results}
+            
+            # --- Diagnostic logging ---
+            state_tool_call_ids = [
+                (type(msg).__name__, getattr(msg, 'tool_call_id', None), getattr(msg, 'name', None))
+                for msg in current_messages
+                if isinstance(msg, ToolMessage)
+            ]
+            print(f"[ToolResults] Submitted tool_call_ids: {list(result_map.keys())}")
+            print(f"[ToolResults] State ToolMessages ({len(state_tool_call_ids)} total): {state_tool_call_ids[-10:]}")
+            
+            def _build_tool_content(tool_call_id: str) -> any:
+                """Build ToolMessage content — multimodal if images are attached."""
+                text = result_map[tool_call_id]
+                imgs = images_map.get(tool_call_id, [])
+                if not imgs:
+                    return text
+                # Build multimodal content: text + images for visual inspection
+                content_parts = [{"type": "text", "text": text}]
+                for img_base64 in imgs[:3]:  # Limit to 3 images max
+                    content_parts.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/png;base64,{img_base64}"}
+                    })
+                print(f"[ToolResults] Attaching {len(imgs)} image(s) for visual inspection (tool_call_id={tool_call_id})")
+                return content_parts
             
             # 找到需要替换的占位消息，获取其 ID
             tool_messages_to_add = []
@@ -210,13 +302,38 @@ async def submit_tool_results(request: ToolResultRequest):
                 if isinstance(msg, ToolMessage) and msg.tool_call_id in result_map:
                     # 使用相同的消息 ID 来替换原有消息
                     tool_messages_to_add.append(ToolMessage(
-                        content=result_map[msg.tool_call_id],
+                        content=_build_tool_content(msg.tool_call_id),
                         tool_call_id=msg.tool_call_id,
                         name=getattr(msg, 'name', None),
                         id=msg.id  # 使用相同的 ID 来触发 add_messages 的替换逻辑
                     ))
             
+            # Fallback: if no placeholders found, create ToolMessages directly
+            # This handles cases where placeholders were not checkpointed or IDs diverged
             if not tool_messages_to_add:
+                print(f"[ToolResults] No placeholders found, using fallback strategy")
+                
+                # Find the last AIMessage that has tool_calls matching our submitted IDs
+                from langchain_core.messages import AIMessage
+                for msg in reversed(current_messages):
+                    if isinstance(msg, AIMessage) and hasattr(msg, 'tool_calls') and msg.tool_calls:
+                        ai_tc_ids = {tc["id"] for tc in msg.tool_calls}
+                        overlap = ai_tc_ids & set(result_map.keys())
+                        if overlap:
+                            print(f"[ToolResults] Fallback: found AIMessage with matching tool_call IDs: {overlap}")
+                            for tc in msg.tool_calls:
+                                if tc["id"] in result_map:
+                                    tool_messages_to_add.append(ToolMessage(
+                                        content=_build_tool_content(tc["id"]),
+                                        tool_call_id=tc["id"],
+                                        name=tc.get("name"),
+                                    ))
+                            break
+            
+            if not tool_messages_to_add:
+                print(f"[ToolResults] ERROR: Could not match any tool_call_ids. "
+                      f"Request IDs: {list(result_map.keys())}, "
+                      f"State ToolMessage IDs: {[x[1] for x in state_tool_call_ids]}")
                 yield {
                     "event": "error",
                     "data": json.dumps({
@@ -260,23 +377,37 @@ async def submit_tool_results(request: ToolResultRequest):
                     output = event["data"]["output"]
                     if hasattr(output, "tool_calls") and output.tool_calls:
                         for tool_call in output.tool_calls:
-                            tool_data = {
-                                "id": tool_call["id"],
-                                "name": tool_call["name"],
-                                "arguments": json.dumps(tool_call["args"], ensure_ascii=False)
-                            }
-                            pending_tools.append(tool_data)
-                            yield {
-                                "event": "tool_call",
-                                "data": json.dumps({
-                                    "type": "tool_call",
-                                    "tool": tool_data
-                                }, ensure_ascii=False)
-                            }
+                            if tool_call["name"] in FRONTEND_TOOLS:
+                                tool_data = {
+                                    "id": tool_call["id"],
+                                    "name": tool_call["name"],
+                                    "arguments": json.dumps(tool_call["args"], ensure_ascii=False)
+                                }
+                                pending_tools.append(tool_data)
+                                yield {
+                                    "event": "tool_call",
+                                    "data": json.dumps({
+                                        "type": "tool_call",
+                                        "tool": tool_data
+                                    }, ensure_ascii=False)
+                                }
             
             # 获取最终状态
             final_state = await agent.aget_state(config)
             pending_from_state = final_state.values.get("pending_tool_calls", [])
+            
+            # If no streaming text was generated, check for finish summary
+            if not full_content and len(pending_from_state) == 0:
+                finish_msg = _extract_finish_message(final_state.values)
+                if finish_msg:
+                    full_content = finish_msg
+                    yield {
+                        "event": "text",
+                        "data": json.dumps({
+                            "type": "text",
+                            "content": finish_msg
+                        }, ensure_ascii=False)
+                    }
             
             yield {
                 "event": "done",
@@ -284,7 +415,7 @@ async def submit_tool_results(request: ToolResultRequest):
                     "type": "done",
                     "sessionId": request.session_id,
                     "content": full_content,
-                    "toolCalls": pending_from_state or pending_tools,
+                    "toolCalls": pending_from_state,
                     "isComplete": len(pending_from_state) == 0
                 }, ensure_ascii=False)
             }
@@ -486,6 +617,7 @@ class ChatWithHistoryRequest(BaseModel):
     user_name: Optional[str] = None
     project_name: Optional[str] = None
     context: Optional[Dict[str, Any]] = None
+    llm_config: Optional[Dict[str, Any]] = None
 
 
 @app.post("/api/agent/chat-with-history")
@@ -536,6 +668,7 @@ async def chat_with_history(request: ChatWithHistoryRequest):
                 "user_name": request.user_name,
                 "project_name": request.project_name,
                 "notebook_context": request.context,
+                "llm_config": request.llm_config,
                 "pending_tool_calls": [],
                 "tool_results": [],
                 "session_id": session_id,
@@ -578,7 +711,24 @@ async def chat_with_history(request: ChatWithHistoryRequest):
                                 }, ensure_ascii=False)
                             }
             
-            # 保存助手响应
+            # 获取最终状态
+            final_state = await agent.aget_state(config)
+            pending_from_state = final_state.values.get("pending_tool_calls", [])
+            
+            # If no streaming text was generated, check for finish summary
+            if not full_content and len(pending_from_state) == 0:
+                finish_msg = _extract_finish_message(final_state.values)
+                if finish_msg:
+                    full_content = finish_msg
+                    yield {
+                        "event": "text",
+                        "data": json.dumps({
+                            "type": "text",
+                            "content": finish_msg
+                        }, ensure_ascii=False)
+                    }
+            
+            # 保存助手完整响应（包括 finish 提取的内容）
             if full_content:
                 assistant_message = ChatMessage(
                     role=MessageRole.ASSISTANT,
@@ -586,10 +736,6 @@ async def chat_with_history(request: ChatWithHistoryRequest):
                     tool_calls=pending_tools if pending_tools else None
                 )
                 store.add_message(conversation.id, assistant_message, user_id)
-            
-            # 获取最终状态
-            final_state = await agent.aget_state(config)
-            pending_from_state = final_state.values.get("pending_tool_calls", [])
             
             # 发送完成事件
             yield {

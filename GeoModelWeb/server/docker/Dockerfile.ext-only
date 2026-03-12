@@ -1,0 +1,25 @@
+# 仅更新扩展（基于已有 CJK 字体的镜像）
+FROM geomodel-jupyter:latest
+
+USER root
+
+# 复制新的扩展 wheel 文件
+COPY jupyterlab-geomodel/dist/jupyterlab_geomodel-0.1.0-py3-none-any.whl /tmp/
+
+# 卸载旧版本并安装新版本
+RUN pip uninstall -y jupyterlab-geomodel && \
+    rm -rf /opt/conda/share/jupyter/labextensions/jupyterlab-geomodel && \
+    pip install --no-cache-dir --force-reinstall /tmp/jupyterlab_geomodel-0.1.0-py3-none-any.whl && \
+    rm -f /tmp/*.whl
+
+# 清除 matplotlib 字体缓存
+RUN rm -rf /home/jovyan/.cache/matplotlib
+
+# 复制自定义 Jupyter 配置
+COPY GeoModelWeb/server/docker/jupyter_server_config.py /etc/jupyter/jupyter_server_config.py
+
+USER ${NB_UID}
+
+RUN jupyter labextension list
+
+WORKDIR /home/jovyan/work

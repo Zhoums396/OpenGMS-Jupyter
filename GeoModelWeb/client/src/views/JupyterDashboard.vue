@@ -24,9 +24,7 @@
       <div class="nav-center">
         <h1 class="page-title">OpenGeoLab - Jupyter</h1>
       </div>
-      <div class="nav-right">
-        <!-- 预留位置 -->
-      </div>
+      <div class="nav-right"></div>
     </header>
 
     <!-- 未登录状态 -->
@@ -105,6 +103,10 @@
               <span class="nav-icon"></span>
               <span>Shared Space</span>
             </a>
+            <router-link class="nav-item" to="/jupyter/cases">
+              <span class="nav-icon"></span>
+              <span>Case Library</span>
+            </router-link>
           </div>
 
           <!-- 二、资源管理 -->
@@ -301,6 +303,9 @@
                       <span v-if="project.forkedFrom" class="fork-tag" :title="`Forked from ${project.forkedFrom.owner}/${project.forkedFrom.projectName}`">
                         ↪ Fork
                       </span>
+                      <span v-if="project.isCase" class="case-tag" title="Published as case">
+                        Case
+                      </span>
                     </td>
                     <td class="col-desc">
                       <span class="desc-text">{{ project.description || '-' }}</span>
@@ -322,6 +327,10 @@
                         <button class="action-icon-btn" @click.stop="toggleProjectVisibility(project)" :title="project.isPublic ? '设为私有' : '设为公开'">
                           <svg v-if="project.isPublic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                           <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </button>
+                        <button class="action-icon-btn" @click.stop="toggleCasePublish(project)" :title="project.isCase ? 'Unpublish case' : 'Publish as case'">
+                          <svg v-if="project.isCase" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 5h14v14H5z"/><path d="M8 12h8"/><path d="M8 8h8"/><path d="M8 16h5"/></svg>
+                          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l2.4 4.86 5.36.78-3.88 3.78.92 5.34L12 15.4 7.2 17.76l.92-5.34L4.24 8.64l5.36-.78L12 3z"/></svg>
                         </button>
                         <button class="action-icon-btn danger" @click.stop="deleteProject(project)" title="删除项目">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -929,6 +938,70 @@
       </div>
     </div>
 
+    <!-- Case 发布面板模态框 -->
+    <div v-if="showCasePublishModal" class="modal-overlay" @click.self="showCasePublishModal = false">
+      <div class="modal-content case-publish-modal">
+        <div class="modal-header">
+          <h2>Publish as Case</h2>
+          <button class="close-btn" @click="showCasePublishModal = false">×</button>
+        </div>
+        <div class="modal-body case-publish-body">
+          <p class="case-publish-hint">Fill in the case metadata. Once published, the project will be public and appear in the Case Library.</p>
+
+          <div class="case-form-grid">
+            <!-- 左列 -->
+            <div class="case-form-col">
+              <div class="form-group">
+                <label>Case Title <span class="required">*</span></label>
+                <input type="text" v-model="caseForm.title" placeholder="Enter case title">
+              </div>
+              <div class="form-group">
+                <label>Summary</label>
+                <textarea v-model="caseForm.summary" placeholder="Describe what this case demonstrates" rows="3"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Scenario</label>
+                <input type="text" v-model="caseForm.scenario" placeholder="e.g. Urban planning, Hazard analysis">
+              </div>
+              <div class="form-group">
+                <label>Core Notebook</label>
+                <input type="text" v-model="caseForm.coreNotebook" placeholder="e.g. main.ipynb">
+              </div>
+              <div class="form-group">
+                <label>Environment</label>
+                <input type="text" v-model="caseForm.environment" placeholder="e.g. Python 3.10 + GDAL">
+              </div>
+            </div>
+            <!-- 右列 -->
+            <div class="case-form-col">
+              <div class="form-group">
+                <label>Tags <span class="field-hint">comma-separated</span></label>
+                <input type="text" v-model="caseForm.tags" placeholder="e.g. Raster, GeoTIFF, Validation">
+              </div>
+              <div class="form-group">
+                <label>Datasets <span class="field-hint">semicolon-separated</span></label>
+                <textarea v-model="caseForm.datasets" placeholder="e.g. DEM_30m.tif; landuse_2020.shp" rows="2"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Reproduction Steps <span class="field-hint">semicolon-separated</span></label>
+                <textarea v-model="caseForm.steps" placeholder="e.g. Open notebook; Run all cells; Check output" rows="3"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Expected Results <span class="field-hint">semicolon-separated</span></label>
+                <textarea v-model="caseForm.results" placeholder="e.g. Output raster generated; Validation passed" rows="3"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="showCasePublishModal = false">Cancel</button>
+          <button class="btn-create" @click="submitCasePublish" :disabled="!caseForm.title.trim() || casePublishSubmitting">
+            {{ casePublishSubmitting ? 'Publishing...' : 'Publish Case' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- 数据上传模态框 -->
     <div v-if="showDataUploader" class="modal-overlay" @click.self="closeDataUploader">
       <div class="modal-content upload-modal">
@@ -1062,6 +1135,22 @@ const loadingDataCenter = ref(false)
 const forkSelectedItems = ref([])
 const forkingData = ref(false)
 const forkedDataIds = ref([]) // 已 fork 的数据 ID 列表
+
+// Case 发布面板状态
+const showCasePublishModal = ref(false)
+const casePublishProject = ref(null)
+const casePublishSubmitting = ref(false)
+const caseForm = ref({
+  title: '',
+  summary: '',
+  scenario: '',
+  coreNotebook: '',
+  environment: '',
+  tags: '',
+  datasets: '',
+  steps: '',
+  results: ''
+})
 
 // Toast 提示框状态
 const toastMessage = ref('')
@@ -1448,6 +1537,77 @@ const toggleProjectVisibility = async (project) => {
     alert('更新失败: ' + (e.response?.data?.error || e.message))
   }
   openMenuProject.value = null
+}
+
+const toggleCasePublish = async (project) => {
+  if (project.isCase) {
+    if (!confirm(`Unpublish case for project "${project.name}"?`)) return
+    try {
+      await authAxios().put(`/api/jupyter/projects/${encodeURIComponent(project.name)}/case`, {
+        isCase: false
+      })
+      const idx = projects.value.findIndex(p => p.name === project.name)
+      if (idx !== -1) {
+        projects.value[idx].isCase = false
+        projects.value[idx].case = null
+        projects.value[idx].caseTitle = ''
+      }
+      showToastMessage('Case unpublished', 'success')
+    } catch (e) {
+      showToastMessage('Failed to unpublish case: ' + (e.response?.data?.error || e.message), 'error')
+    }
+    return
+  }
+
+  // 打开 Case 发布面板，预填已有数据
+  casePublishProject.value = project
+  caseForm.value = {
+    title: project.caseTitle || project.case?.title || project.name,
+    summary: project.case?.summary || project.description || '',
+    scenario: project.case?.scenario || '',
+    coreNotebook: project.case?.coreNotebook || '',
+    environment: project.case?.environment || '',
+    tags: (project.case?.tags || []).join(', '),
+    datasets: (project.case?.datasets || []).join('; '),
+    steps: (project.case?.steps || []).join('; '),
+    results: (project.case?.results || []).join('; ')
+  }
+  showCasePublishModal.value = true
+}
+
+const submitCasePublish = async () => {
+  const project = casePublishProject.value
+  if (!project) return
+  casePublishSubmitting.value = true
+  try {
+    const res = await authAxios().put(`/api/jupyter/projects/${encodeURIComponent(project.name)}/case`, {
+      isCase: true,
+      caseMeta: {
+        title: caseForm.value.title,
+        summary: caseForm.value.summary,
+        scenario: caseForm.value.scenario,
+        coreNotebook: caseForm.value.coreNotebook,
+        environment: caseForm.value.environment,
+        tags: caseForm.value.tags,
+        datasets: caseForm.value.datasets,
+        steps: caseForm.value.steps,
+        results: caseForm.value.results
+      }
+    })
+    const idx = projects.value.findIndex(p => p.name === project.name)
+    if (idx !== -1) {
+      projects.value[idx].isCase = true
+      projects.value[idx].isPublic = true
+      projects.value[idx].case = res.data.case || null
+      projects.value[idx].caseTitle = res.data.case?.title || caseForm.value.title.trim()
+    }
+    showCasePublishModal.value = false
+    showToastMessage('Case published successfully (project is now public)', 'success')
+  } catch (e) {
+    showToastMessage('Failed to publish case: ' + (e.response?.data?.error || e.message), 'error')
+  } finally {
+    casePublishSubmitting.value = false
+  }
 }
 
 // 格式化日期时间
@@ -3457,6 +3617,16 @@ onMounted(async () => {
   border-radius: 4px;
 }
 
+.case-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  background: rgba(47, 108, 246, 0.12);
+  color: #2f6cf6;
+  font-size: 11px;
+  border-radius: 4px;
+}
+
 .desc-text {
   color: #5f6368;
   font-size: 13px;
@@ -3912,6 +4082,92 @@ onMounted(async () => {
 .btn-create:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Case 发布面板样式 */
+.case-publish-modal {
+  max-width: 780px !important;
+}
+
+.case-publish-body {
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+.case-publish-hint {
+  margin: 0 0 18px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px 14px;
+  background: #f0f6ff;
+  border-radius: 8px;
+  border-left: 3px solid #3b82f6;
+}
+
+.case-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 24px;
+}
+
+.case-form-col .form-group {
+  margin-bottom: 16px;
+}
+
+.case-form-col .form-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.case-form-col .form-group label .required {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.case-form-col .form-group label .field-hint {
+  font-weight: 400;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.case-form-col .form-group input,
+.case-form-col .form-group textarea {
+  width: 100%;
+  padding: 9px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  color: #1e293b;
+  font-size: 13px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.case-form-col .form-group input:focus,
+.case-form-col .form-group textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: #fff;
+}
+
+.case-form-col .form-group textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+@media (max-width: 640px) {
+  .case-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .case-publish-modal {
+    max-width: 95% !important;
+  }
 }
 
 /* 表格列宽调整 */

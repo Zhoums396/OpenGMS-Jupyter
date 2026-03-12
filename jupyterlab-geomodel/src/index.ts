@@ -83,7 +83,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     });
 
     // ==================== Left Sidebar: AI Agent ====================
-    const agentWidget = new AgentWidget(notebookTracker);
+    const agentWidget = new AgentWidget(notebookTracker, app);
     agentWidget.id = 'geomodel-agent';
     agentWidget.title.icon = agentIcon;
     agentWidget.title.caption = 'OpenGeoLab AI Agent';

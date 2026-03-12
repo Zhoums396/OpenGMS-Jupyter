@@ -510,6 +510,45 @@ function saveProjectMeta(projectPath, meta) {
     fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
 }
 
+function normalizeCaseText(value, maxLength = 2000) {
+    if (typeof value !== 'string') return '';
+    return value.trim().slice(0, maxLength);
+}
+
+function normalizeCaseList(value, maxItems = 20, maxLength = 120) {
+    let rawList = [];
+    if (Array.isArray(value)) {
+        rawList = value;
+    } else if (typeof value === 'string') {
+        rawList = value.split(/\r?\n|,|;/g);
+    }
+
+    return rawList
+        .map(item => normalizeCaseText(String(item), maxLength))
+        .filter(Boolean)
+        .slice(0, maxItems);
+}
+
+function sanitizeCaseMeta(rawMeta = {}) {
+    return {
+        title: normalizeCaseText(rawMeta.title, 120),
+        summary: normalizeCaseText(rawMeta.summary, 1000),
+        scenario: normalizeCaseText(rawMeta.scenario, 300),
+        coreNotebook: normalizeCaseText(rawMeta.coreNotebook, 180),
+        environment: normalizeCaseText(rawMeta.environment, 120),
+        coverImage: normalizeCaseText(rawMeta.coverImage, 600),
+        tags: normalizeCaseList(rawMeta.tags, 12, 40),
+        datasets: normalizeCaseList(rawMeta.datasets, 20, 120),
+        steps: normalizeCaseList(rawMeta.steps, 20, 300),
+        results: normalizeCaseList(rawMeta.results, 20, 300)
+    };
+}
+
+function getCaseMeta(meta) {
+    if (!meta || !meta.case || typeof meta.case !== 'object') return null;
+    return sanitizeCaseMeta(meta.case);
+}
+
 /**
  * GET /api/jupyter/projects
  * 获取用户的项目列表（以文件夹为单位）
@@ -533,6 +572,7 @@ router.get('/projects', (req, res) => {
                 
                 // 读取项目元信息
                 const meta = getProjectMeta(projectPath);
+                const caseMeta = meta.isCase ? getCaseMeta(meta) : null;
                 
                 // 统计项目内的 notebook 数量
                 const projectFiles = fs.readdirSync(projectPath);
@@ -559,6 +599,9 @@ router.get('/projects', (req, res) => {
                     modifiedAt: latestModified,
                     createdAt: stats.birthtime,
                     isPublic: meta.isPublic || false,
+                    isCase: !!meta.isCase,
+                    caseTitle: caseMeta?.title || '',
+                    case: caseMeta,
                     forkedFrom: meta.forkedFrom || null,  // { owner, projectName }
                     owner: username
                 };
@@ -605,6 +648,7 @@ router.post('/projects', (req, res) => {
             name: safeName,
             description: description || '',
             isPublic: isPublic || false,
+            isCase: false,
             createdAt: new Date().toISOString(),
             createdBy: username
         };
@@ -620,6 +664,9 @@ router.post('/projects', (req, res) => {
                 modifiedAt: new Date(),
                 createdAt: new Date(),
                 isPublic: isPublic || false,
+                isCase: false,
+                caseTitle: '',
+                case: null,
                 forkedFrom: null,
                 owner: username
             }
@@ -656,6 +703,7 @@ router.get('/projects/:projectName', (req, res) => {
                 projectMeta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
             } catch (e) {}
         }
+        const caseMeta = projectMeta.isCase ? getCaseMeta(projectMeta) : null;
         
         // 获取所有文件信息
         const fileList = files
@@ -696,6 +744,9 @@ router.get('/projects/:projectName', (req, res) => {
         res.json({
             project: {
                 ...projectMeta,
+                isCase: !!projectMeta.isCase,
+                caseTitle: caseMeta?.title || '',
+                case: caseMeta,
                 modifiedAt: stats.mtime,
                 createdAt: stats.birthtime
             },
@@ -1564,6 +1615,7 @@ router.get('/shared-projects', (req, res) => {
                 
                 const projectPath = path.join(userPath, item.name);
                 const meta = getProjectMeta(projectPath);
+                const caseMeta = meta.isCase ? getCaseMeta(meta) : null;
                 
                 // 只获取公开项目
                 if (!meta.isPublic) continue;
@@ -1593,7 +1645,10 @@ router.get('/shared-projects', (req, res) => {
                     fileCount,
                     modifiedAt: latestModified,
                     createdAt: stats.birthtime,
-                    isPublic: true
+                    isPublic: true,
+                    isCase: !!meta.isCase,
+                    caseTitle: caseMeta?.title || '',
+                    case: caseMeta
                 });
             }
         }
@@ -1620,6 +1675,7 @@ router.get('/shared-projects/:owner/:projectName', (req, res) => {
     }
     
     const meta = getProjectMeta(projectDir);
+    const caseMeta = meta.isCase ? getCaseMeta(meta) : null;
     if (!meta.isPublic) {
         return res.status(403).json({ error: '该项目未公开' });
     }
@@ -1647,6 +1703,9 @@ router.get('/shared-projects/:owner/:projectName', (req, res) => {
                 files,
                 notebookCount: files.filter(f => f.name.endsWith('.ipynb')).length,
                 fileCount: files.length,
+                isCase: !!meta.isCase,
+                caseTitle: caseMeta?.title || '',
+                case: caseMeta,
                 modifiedAt: stats.mtime,
                 createdAt: stats.birthtime
             }
@@ -1765,6 +1824,7 @@ router.post('/fork/:owner/:projectName', (req, res) => {
             name: targetName,
             description: sourceMeta.description || '',
             isPublic: false,  // fork 后默认不公开
+            isCase: false,
             forkedFrom: {
                 owner: owner,
                 projectName: projectName
@@ -1790,6 +1850,9 @@ router.post('/fork/:owner/:projectName', (req, res) => {
                 modifiedAt: new Date(),
                 createdAt: new Date(),
                 isPublic: false,
+                isCase: false,
+                caseTitle: '',
+                case: null,
                 forkedFrom: newMeta.forkedFrom,
                 owner: currentUser
             }
@@ -1824,6 +1887,179 @@ router.put('/projects/:projectName/visibility', (req, res) => {
     } catch (error) {
         console.error('Error updating visibility:', error);
         res.status(500).json({ error: '更新失败' });
+    }
+});
+
+/**
+ * PUT /api/jupyter/projects/:projectName/case
+ * Publish/update/unpublish a case
+ */
+router.put('/projects/:projectName/case', (req, res) => {
+    const username = req.user.username;
+    const { projectName } = req.params;
+    const { isCase, caseMeta } = req.body || {};
+
+    const projectDir = path.join(USER_DATA_DIR, username, projectName);
+    if (!fs.existsSync(projectDir)) {
+        return res.status(404).json({ error: 'Project not found' });
+    }
+
+    try {
+        const meta = getProjectMeta(projectDir);
+
+        if (!isCase) {
+            meta.isCase = false;
+            delete meta.case;
+            saveProjectMeta(projectDir, meta);
+            return res.json({
+                status: 'updated',
+                isCase: false,
+                case: null,
+                isPublic: !!meta.isPublic
+            });
+        }
+
+        const normalized = sanitizeCaseMeta(caseMeta || {});
+        if (!normalized.title) {
+            normalized.title = meta.name || projectName;
+        }
+
+        meta.isCase = true;
+        meta.isPublic = true;
+        meta.case = {
+            ...normalized,
+            updatedAt: new Date().toISOString()
+        };
+
+        saveProjectMeta(projectDir, meta);
+
+        return res.json({
+            status: 'updated',
+            isCase: true,
+            isPublic: true,
+            case: meta.case
+        });
+    } catch (error) {
+        console.error('Error updating case meta:', error);
+        return res.status(500).json({ error: 'Failed to update case' });
+    }
+});
+
+/**
+ * GET /api/jupyter/cases
+ * List public cases
+ */
+router.get('/cases', (req, res) => {
+    try {
+        const cases = [];
+        if (!fs.existsSync(USER_DATA_DIR)) {
+            return res.json({ cases: [] });
+        }
+
+        const users = fs.readdirSync(USER_DATA_DIR, { withFileTypes: true })
+            .filter(item => item.isDirectory());
+
+        for (const userDir of users) {
+            const username = userDir.name;
+            const userPath = path.join(USER_DATA_DIR, username);
+            const items = fs.readdirSync(userPath, { withFileTypes: true });
+
+            for (const item of items) {
+                if (!item.isDirectory() || item.name.startsWith('.') || item.name === '__pycache__') {
+                    continue;
+                }
+
+                const projectPath = path.join(userPath, item.name);
+                const meta = getProjectMeta(projectPath);
+                if (!meta.isPublic || !meta.isCase) continue;
+
+                const caseMeta = getCaseMeta(meta);
+                const stats = fs.statSync(projectPath);
+                const projectFiles = fs.readdirSync(projectPath);
+                const notebookCount = projectFiles.filter(f => f.endsWith('.ipynb')).length;
+                const fileCount = projectFiles.filter(f => !f.startsWith('.')).length;
+
+                let latestModified = stats.mtime;
+                projectFiles.forEach(f => {
+                    try {
+                        const filePath = path.join(projectPath, f);
+                        const fileStats = fs.statSync(filePath);
+                        if (fileStats.mtime > latestModified) {
+                            latestModified = fileStats.mtime;
+                        }
+                    } catch (e) {}
+                });
+
+                cases.push({
+                    owner: username,
+                    projectName: item.name,
+                    description: meta.description || '',
+                    notebookCount,
+                    fileCount,
+                    modifiedAt: latestModified,
+                    createdAt: stats.birthtime,
+                    case: caseMeta
+                });
+            }
+        }
+
+        cases.sort((a, b) => new Date(b.modifiedAt) - new Date(a.modifiedAt));
+        return res.json({ cases });
+    } catch (error) {
+        console.error('Error fetching cases:', error);
+        return res.status(500).json({ error: 'Failed to fetch cases' });
+    }
+});
+
+/**
+ * GET /api/jupyter/cases/:owner/:projectName
+ * Get case details
+ */
+router.get('/cases/:owner/:projectName', (req, res) => {
+    const { owner, projectName } = req.params;
+    const projectDir = path.join(USER_DATA_DIR, owner, projectName);
+
+    if (!fs.existsSync(projectDir)) {
+        return res.status(404).json({ error: 'Case project not found' });
+    }
+
+    const meta = getProjectMeta(projectDir);
+    if (!meta.isPublic || !meta.isCase) {
+        return res.status(403).json({ error: 'This project is not a public case' });
+    }
+
+    try {
+        const caseMeta = getCaseMeta(meta);
+        const stats = fs.statSync(projectDir);
+        const files = fs.readdirSync(projectDir, { withFileTypes: true })
+            .filter(item => !item.name.startsWith('.'))
+            .map(item => {
+                const filePath = path.join(projectDir, item.name);
+                const fileStats = fs.statSync(filePath);
+                return {
+                    name: item.name,
+                    type: item.isDirectory() ? 'folder' : 'file',
+                    size: fileStats.size,
+                    modifiedAt: fileStats.mtime
+                };
+            });
+
+        return res.json({
+            case: {
+                owner,
+                projectName,
+                description: meta.description || '',
+                notebookCount: files.filter(f => f.name.endsWith('.ipynb')).length,
+                fileCount: files.length,
+                modifiedAt: stats.mtime,
+                createdAt: stats.birthtime,
+                files,
+                case: caseMeta
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching case detail:', error);
+        return res.status(500).json({ error: 'Failed to fetch case detail' });
     }
 });
 
