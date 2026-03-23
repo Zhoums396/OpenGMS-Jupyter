@@ -11,34 +11,60 @@
           type="text" 
           :placeholder="$t('dataMethodView.searchPlaceholder')"
           class="search-input"
+          :disabled="loading"
         >
-        <button @click="handleSearch" class="search-btn">
+        <button @click="handleSearch" class="search-btn" :disabled="loading">
           {{ $t('dataMethodView.search') }}
         </button>
       </div>
     </div>
 
-    <div v-if="loading && !dataMethods.length" class="loading-state">
-      <div class="spinner"></div>
-      <p>{{ $t('dataMethodView.loading') }}</p>
-    </div>
-
-    <div v-else class="content-wrapper">
+    <div class="content-wrapper">
       <!-- 搜索提示 -->
-      <div v-if="searchNote" class="search-note">
+      <div v-if="searchNote && !loading" class="search-note">
         {{ searchNote }}
       </div>
       
       <!-- 搜索结果统计 -->
-      <div v-if="searchQuery && total > 0" class="search-stats">
+      <div v-if="searchQuery && total > 0 && !loading" class="search-stats">
         找到 {{ total }} 个匹配的数据方法
       </div>
       
-      <div class="model-grid">
-        <ModelCard 
+      <div v-if="loading" class="model-grid skeleton-grid" aria-live="polite" aria-busy="true">
+        <div
+          v-for="item in skeletonItems"
+          :key="item"
+          class="skeleton-card"
+        >
+          <div class="skeleton skeleton-visual"></div>
+          <div class="skeleton-content">
+            <div class="skeleton-header">
+              <div class="skeleton skeleton-title"></div>
+              <div class="skeleton skeleton-badge"></div>
+            </div>
+            <div class="skeleton-body">
+              <div class="skeleton skeleton-line long"></div>
+              <div class="skeleton skeleton-line"></div>
+              <div class="skeleton-tag-row">
+                <div class="skeleton skeleton-tag"></div>
+                <div class="skeleton skeleton-tag short"></div>
+              </div>
+            </div>
+          </div>
+          <div class="skeleton-side">
+            <div class="skeleton skeleton-metric"></div>
+            <div class="skeleton skeleton-metric"></div>
+            <div class="skeleton skeleton-metric"></div>
+            <div class="skeleton skeleton-button"></div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="model-grid">
+        <DataMethodCard
           v-for="method in dataMethods" 
           :key="method.id" 
-          :model="method" 
+          :method="method"
           @run="openRunModal"
         />
       </div>
@@ -46,7 +72,7 @@
       <div class="pagination">
         <button 
           class="page-btn" 
-          :disabled="currentPage === 1" 
+          :disabled="loading || currentPage === 1" 
           @click="changePage(currentPage - 1)"
         >
           &lt; {{ $t('dataMethodView.previous') }}
@@ -56,7 +82,7 @@
         
         <button 
           class="page-btn" 
-          :disabled="currentPage === totalPages" 
+          :disabled="loading || currentPage === totalPages" 
           @click="changePage(currentPage + 1)"
         >
           {{ $t('dataMethodView.next') }} &gt;
@@ -84,7 +110,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
-import ModelCard from '../components/ModelCard.vue'
+import DataMethodCard from '../components/DataMethodCard.vue'
 import RunModal from '../components/RunModal.vue'
 import ResultModal from '../components/ResultModal.vue'
 
@@ -103,6 +129,7 @@ const showResultModal = ref(false)
 const executionResult = ref(null)
 
 const totalPages = computed(() => Math.ceil(total.value / limit))
+const skeletonItems = computed(() => Array.from({ length: limit }, (_, index) => index))
 
 const fetchDataMethods = async (page = 1) => {
   loading.value = true
@@ -195,8 +222,9 @@ onMounted(() => {
 .view-header h1 {
   font-size: 2rem;
   margin-bottom: 0.5rem;
-  color: #000000;
-  font-weight: 600;
+  color: var(--text-primary);
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .subtitle {
@@ -232,46 +260,135 @@ onMounted(() => {
 .search-btn {
   padding: 0 1.5rem;
   background: var(--accent-color);
-  border: none;
+  border: 1px solid transparent;
   border-radius: 6px;
   color: white;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+  transition: background-color 0.2s;
 }
 
-.search-btn:hover {
+.search-btn:hover:not(:disabled) {
   background: var(--accent-hover);
-  transform: translateY(-1px);
+}
+
+.search-btn:disabled,
+.search-input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .model-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
   margin-bottom: 2rem;
 }
 
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 400px;
-  color: var(--text-secondary);
+.skeleton-card {
   background: var(--card-bg);
-  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  padding: 1.25rem 1.35rem;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 230px;
+  gap: 1.25rem;
+  align-items: start;
   box-shadow: var(--shadow-sm);
 }
 
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--accent-color);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 1rem;
+.skeleton-content {
+  min-width: 0;
+}
+
+.skeleton-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.skeleton-body {
+  padding-top: 1rem;
+}
+
+.skeleton-side {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #e8edf5;
+  border-radius: 999px;
+}
+
+.skeleton::after {
+  content: none;
+}
+
+.skeleton {
+  animation: skeletonPulse 1.1s ease-in-out infinite alternate;
+}
+
+.skeleton-visual {
+  width: 92px;
+  height: 92px;
+  border-radius: 22px;
+}
+
+.skeleton-title {
+  width: 52%;
+  height: 30px;
+  border-radius: 10px;
+}
+
+.skeleton-badge {
+  width: 92px;
+  height: 22px;
+}
+
+.skeleton-line {
+  height: 14px;
+  margin-bottom: 0.75rem;
+  border-radius: 8px;
+}
+
+.skeleton-line.long {
+  width: 92%;
+}
+
+.skeleton-line:not(.long) {
+  width: 78%;
+}
+
+.skeleton-tag-row {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.skeleton-tag {
+  width: 110px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.skeleton-tag.short {
+  width: 84px;
+}
+
+.skeleton-metric {
+  width: 100%;
+  height: 52px;
+  border-radius: 14px;
+}
+
+.skeleton-button {
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
 }
 
 .pagination {
@@ -336,7 +453,29 @@ onMounted(() => {
   to { opacity: 1; }
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+@keyframes skeletonPulse {
+  from { opacity: 0.62; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 1080px) {
+  .skeleton-card {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .skeleton-side {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .skeleton-card {
+    grid-template-columns: 1fr;
+  }
+
+  .skeleton-side {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

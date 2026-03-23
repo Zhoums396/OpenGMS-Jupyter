@@ -176,7 +176,7 @@ const formatOutput = (output) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, var(--nav-bg), #1a1a1a);
+  background: var(--nav-bg);
   border-radius: 12px 12px 0 0;
 }
 

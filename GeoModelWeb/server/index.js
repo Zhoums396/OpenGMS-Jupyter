@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const xml2js = require('xml2js');
 const https = require('https');
+const { getDatabaseInfo, initDatabase } = require('./db/database');
 
 // 创建忽略 SSL 证书验证的 https agent
 const httpsAgent = new https.Agent({
@@ -89,11 +90,58 @@ const DATA_SERVER_URL = 'http://221.224.35.86:38083/data';
 const OGMS_PORTAL_URL = 'http://222.192.7.75';
 const OGMS_MANAGER_URL = 'http://222.192.7.75/managerServer';
 const OGMS_DATA_URL = 'http://222.192.7.75/dataTransferServer';
+const OGMS_DEPLOYED_MODEL_QUERY_TOKEN = process.env.OGMS_DEPLOYED_MODEL_QUERY_TOKEN || 'ua6R2Qbf=0cvx_0alqEHJRFRaPfczQAGVL6obCzYn1J2tWiQZKc0MD9oss1d3YEE6a21Ollu8xNEo9b1mV4EBJzlX08xQswyK2OTcOsAiQ';
+const OGMS_DEPLOYED_MODEL_URL = `${OGMS_PORTAL_URL}/managementSystem/deployedModel?${OGMS_DEPLOYED_MODEL_QUERY_TOKEN}`;
 
 const api = axios.create({
     baseURL: API_BASE_URL,
     headers: { 'token': API_TOKEN }
 });
+
+const DATA_METHOD_CACHE_TTL_MS = parseInt(process.env.DATA_METHOD_CACHE_TTL_MS || '300000', 10);
+const dataMethodCache = new Map();
+const OGMS_MODEL_LIST_CACHE_TTL_MS = parseInt(process.env.OGMS_MODEL_LIST_CACHE_TTL_MS || '300000', 10);
+const OGMS_MODEL_DETAIL_CACHE_TTL_MS = parseInt(process.env.OGMS_MODEL_DETAIL_CACHE_TTL_MS || '1800000', 10);
+const ogmsModelListCache = new Map();
+const ogmsModelDetailCache = new Map();
+const DATA_METHOD_TAG_NAME_MAP = {
+    '1': 'Math and Stats Tools',
+    '2': 'Image Processing Tools',
+    '3': 'Filters',
+    '4': 'Data Tools',
+    '5': 'GIS Analysis',
+    '6': 'LiDAR Tools',
+    '7': 'Geomorphometric Analysis',
+    '8': 'Hydrological Analysis',
+    '9': 'Overlay Tools',
+    '10': 'Image Enhancement',
+    '11': 'Patch Shape Tools',
+    '12': 'Distance Tools',
+    '13': 'Stream Network Analysis',
+    '14': 'Whitebox',
+    '15': 'Machine Learning'
+};
+const OGMS_MODEL_TAG_NAME_MAP = {
+    'a24cba2b-9ce1-44de-ac68-8ec36a535d0e': 'Land regions',
+    '75aee2b7-b39a-4cd0-9223-3b7ce755e457': 'Ocean regions',
+    '1bf4f381-6bd8-4716-91ab-5a56e51bd2f9': 'Frozen regions',
+    '8f4d4fca-4d09-49b4-b6f7-5021bc57d0e5': 'Atmospheric regions',
+    'd33a1ebe-b2f5-4ed3-9c76-78cfb61c23ee': 'Space-earth regions',
+    'd3ba6e0b-78ec-4fe8-9985-4d5708f28e3e': 'Solid-earth regions',
+    '808e74a4-41c6-4558-a850-4daec1f199df': 'Development activities',
+    '40534cf8-039a-4a0a-8db9-7c9bff484190': 'Social activities',
+    'cf9cd106-b873-4a8a-9336-dd72398fc769': 'Economic activities',
+    '14130969-fda6-41ea-aa32-0af43104840b': 'Global scale',
+    'e56c1254-70b8-4ff4-b461-b8fa3039944e': 'Regional scale',
+    'afa99af9-4224-4fac-a81f-47a7fb663dba': 'Geoinformation analysis',
+    'f20411a5-2f55-4ee9-9590-c2ec826b8bd5': 'Remote sensing analysis',
+    '1c876281-a032-4575-8eba-f1a8fb4560d8': 'Geostatistical analysis',
+    'c6fcc899-8ca4-4269-a21e-a39d38c034a6': 'Intelligent computation analysis',
+    '1d564d0f-51c6-40ca-bd75-3f9489ccf1d6': 'Physical process calculation',
+    '63266a14-d7f9-44cb-8204-c877eaddcaa1': 'Chemical process calculation',
+    '6d1efa2c-830d-4546-b759-c66806c4facc': 'Biological process calculation',
+    '6952d5b2-cb0f-4ba7-96fd-5761dd566344': 'Human-activity calculation'
+};
 
 const ogmsApi = axios.create({
     baseURL: OGMS_PORTAL_URL,
@@ -106,6 +154,277 @@ const opengmpApi = axios.create({
     baseURL: OPENGMP_API_URL,
     httpsAgent: httpsAgent  // 忽略 SSL 证书验证
 });
+const DATA_CENTER_WEB_HOST = 'https://geomodeling.njnu.edu.cn';
+const DATA_CENTER_NODE_HOST = 'https://geomodeling.njnu.edu.cn/OpenGMPNodeBack';
+const GEODATA_COMPONENTS_API_URL = 'http://nnu.geodata.cn/service/scidata/datacomponents/bytype/';
+const GEODATA_IMAGE_HOST = 'https://img.data.ac.cn';
+const DATA_CENTER_THUMBNAIL_CACHE_TTL_MS = parseInt(process.env.DATA_CENTER_THUMBNAIL_CACHE_TTL_MS || '21600000', 10);
+const dataCenterThumbnailCache = new Map();
+
+function getCacheValue(cacheKey) {
+    const entry = dataMethodCache.get(cacheKey);
+    if (!entry) {
+        return null;
+    }
+
+    if (entry.expiresAt <= Date.now()) {
+        dataMethodCache.delete(cacheKey);
+        return null;
+    }
+
+    return entry.value;
+}
+
+function setCacheValue(cacheKey, value) {
+    dataMethodCache.set(cacheKey, {
+        value,
+        expiresAt: Date.now() + DATA_METHOD_CACHE_TTL_MS
+    });
+}
+
+function getOgmsCacheValue(cacheMap, cacheKey) {
+    const entry = cacheMap.get(cacheKey);
+    if (!entry) {
+        return null;
+    }
+
+    if (entry.expiresAt <= Date.now()) {
+        cacheMap.delete(cacheKey);
+        return null;
+    }
+
+    return entry.value;
+}
+
+function setOgmsCacheValue(cacheMap, cacheKey, value, ttlMs) {
+    cacheMap.set(cacheKey, {
+        value,
+        expiresAt: Date.now() + ttlMs
+    });
+}
+
+function extractDataGuidFromAddress(address) {
+    const source = String(address || '').trim();
+    if (!source) {
+        return '';
+    }
+
+    const match = source.match(/[?&]dataguid=(\d+)/i);
+    return match ? match[1] : '';
+}
+
+function uniqueValues(values) {
+    return Array.from(new Set(values.filter(Boolean)));
+}
+
+function buildDataCenterThumbnailCandidates(item, geodataThumbnailUrl = '') {
+    const rawCandidates = [
+        geodataThumbnailUrl,
+        item.thumbnailUrl,
+        item.imgWebAddress,
+        item.imgRelativePath,
+        item.subDataItems?.[0]?.visualWebAddress
+    ]
+        .map(value => String(value || '').trim())
+        .filter(Boolean);
+
+    const resolvedCandidates = rawCandidates.flatMap(value => {
+        if (value.startsWith('http://') || value.startsWith('https://')) {
+            return [value];
+        }
+
+        if (value.startsWith('/store/')) {
+            return [
+                `${OPENGMP_API_URL}${value}`,
+                `${DATA_CENTER_WEB_HOST}${value}`,
+                `${DATA_CENTER_NODE_HOST}${value}`
+            ];
+        }
+
+        if (value.startsWith('/resourceData/')) {
+            return [
+                `${OPENGMP_API_URL}${value}`,
+                `${OPENGMP_API_URL}/store${value}`,
+                `${DATA_CENTER_WEB_HOST}${value}`,
+                `${DATA_CENTER_WEB_HOST}/store${value}`,
+                `${DATA_CENTER_NODE_HOST}${value}`,
+                `${DATA_CENTER_NODE_HOST}/store${value}`
+            ];
+        }
+
+        if (value.startsWith('/')) {
+            return [
+                `${OPENGMP_API_URL}${value}`,
+                `${DATA_CENTER_WEB_HOST}${value}`,
+                `${DATA_CENTER_NODE_HOST}${value}`
+            ];
+        }
+
+        return [
+            `${OPENGMP_API_URL}/${value}`,
+            `${DATA_CENTER_WEB_HOST}/${value}`,
+            `${DATA_CENTER_NODE_HOST}/${value}`
+        ];
+    });
+
+    return uniqueValues(resolvedCandidates);
+}
+
+async function resolveGeodataThumbnailUrl(fileWebAddress) {
+    const dataGuid = extractDataGuidFromAddress(fileWebAddress);
+    if (!dataGuid) {
+        return '';
+    }
+
+    const cacheKey = `thumb:${dataGuid}`;
+    const cachedValue = getOgmsCacheValue(dataCenterThumbnailCache, cacheKey);
+    if (cachedValue !== null) {
+        return cachedValue;
+    }
+
+    try {
+        const response = await axios.get(GEODATA_COMPONENTS_API_URL, {
+            params: { dataGuid },
+            timeout: 3000
+        });
+
+        const components = Array.isArray(response.data?.op_read) ? response.data.op_read : [];
+        const thumbnail = components.find(component => Number(component?.type) === 1 && component?.fileId);
+        const rawFileId = String(thumbnail?.fileId || '').trim();
+
+        const resolvedUrl = rawFileId
+            ? (rawFileId.startsWith('http://') || rawFileId.startsWith('https://')
+                ? rawFileId
+                : `${GEODATA_IMAGE_HOST}/${rawFileId.replace(/^\/+/, '')}`)
+            : '';
+
+        setOgmsCacheValue(dataCenterThumbnailCache, cacheKey, resolvedUrl, DATA_CENTER_THUMBNAIL_CACHE_TTL_MS);
+        return resolvedUrl;
+    } catch (error) {
+        // 失败时做短缓存，避免短时间内重复打满外部接口
+        setOgmsCacheValue(dataCenterThumbnailCache, cacheKey, '', 5 * 60 * 1000);
+        return '';
+    }
+}
+
+async function enrichDataCenterItem(item) {
+    const geodataThumbnailUrl = await resolveGeodataThumbnailUrl(item.fileWebAddress);
+    const thumbnailCandidates = buildDataCenterThumbnailCandidates(item, geodataThumbnailUrl);
+
+    return {
+        ...item,
+        thumbnailUrl: thumbnailCandidates[0] || '',
+        thumbnailCandidates
+    };
+}
+
+function mapDataMethodSummary(item) {
+    const params = Array.isArray(item.params) ? item.params : [];
+    const rawTags = item.tags || item.tagList || item.tagIdList || [];
+    const tags = rawTags.map(tag => DATA_METHOD_TAG_NAME_MAP[String(tag)] || String(tag));
+    const inputParams = params.filter(param => param.Type === 'DataInput');
+    const outputParams = params.filter(param => param.Type === 'DataOutput');
+    const optionParams = params.filter(param => param.Type !== 'DataInput' && param.Type !== 'DataOutput');
+    const flattenTypeValues = (typeDef) => {
+        if (!typeDef) {
+            return [];
+        }
+
+        if (typeof typeDef === 'string' || typeof typeDef === 'number' || typeof typeDef === 'boolean') {
+            return [String(typeDef)];
+        }
+
+        if (Array.isArray(typeDef)) {
+            return typeDef.flatMap(flattenTypeValues);
+        }
+
+        if (typeof typeDef === 'object') {
+            return Object.values(typeDef).flatMap(flattenTypeValues);
+        }
+
+        return [];
+    };
+    const collectKinds = paramList => Array.from(new Set(
+        paramList
+            .flatMap(param => {
+                const typeDef = param.parameter_type;
+                return flattenTypeValues(typeDef);
+            })
+            .map(value => String(value).trim())
+            .filter(value => value && value !== '[object Object]')
+    ));
+
+    return {
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        longDescription: item.longDesc || item.description || '',
+        author: item.author || 'Unknown',
+        tags,
+        createTime: item.createTime,
+        engine: item.uuid || null,
+        execution: item.execution || null,
+        methodType: item.type || null,
+        category: item.category || null,
+        paramCount: params.length,
+        inputCount: inputParams.length,
+        outputCount: outputParams.length,
+        optionCount: optionParams.length,
+        inputKinds: collectKinds(inputParams),
+        outputKinds: collectKinds(outputParams)
+    };
+}
+
+async function fetchDataMethodListPage(page, limit) {
+    const cacheKey = `page:${page}:limit:${limit}`;
+    const cachedValue = getCacheValue(cacheKey);
+    if (cachedValue) {
+        return cachedValue;
+    }
+
+    // `listWithStringTag` 与参考项目一致，实测比 `listWithTag` 更快。
+    const response = await api.get('/container/method/listWithStringTag', {
+        params: { page, limit }
+    });
+
+    if (response.data.code !== 0) {
+        throw new Error(response.data.msg || 'Failed to fetch data methods');
+    }
+
+    const payload = {
+        total: response.data.page.totalCount,
+        page,
+        limit,
+        data: response.data.page.list.map(mapDataMethodSummary)
+    };
+
+    setCacheValue(cacheKey, payload);
+    return payload;
+}
+
+async function fetchSearchableDataMethodBatch(searchLimit) {
+    const cacheKey = `search-batch:${searchLimit}`;
+    const cachedValue = getCacheValue(cacheKey);
+    if (cachedValue) {
+        return cachedValue;
+    }
+
+    const response = await api.get('/container/method/listWithStringTag', {
+        params: { page: 1, limit: searchLimit }
+    });
+
+    if (response.data.code !== 0) {
+        throw new Error(response.data.msg || 'Failed to fetch searchable data methods');
+    }
+
+    const payload = {
+        totalCount: response.data.page.totalCount,
+        methods: response.data.page.list.map(mapDataMethodSummary)
+    };
+
+    setCacheValue(cacheKey, payload);
+    return payload;
+}
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -181,6 +500,14 @@ app.post('/api/datacenter/list', async (req, res) => {
         const response = await opengmpApi.post('/centerRes/getResourceDataList', params);
 
         if (response.data.code === 0) {
+            const content = Array.isArray(response.data?.data?.content)
+                ? response.data.data.content
+                : [];
+
+            if (content.length > 0) {
+                response.data.data.content = await Promise.all(content.map(item => enrichDataCenterItem(item)));
+            }
+
             res.json(response.data);
         } else {
             res.status(400).json({
@@ -222,69 +549,37 @@ app.get('/api/datamethods', async (req, res) => {
 
         // 无搜索时，直接分页请求后端 API
         if (!search || search.length === 0) {
-            const response = await api.get(`/container/method/listWithTag`, {
-                params: { page, limit }
-            });
-
-            if (response.data.code === 0) {
-                const methods = response.data.page.list.map(item => ({
-                    id: item.id,
-                    name: item.name,
-                    description: item.description,
-                    author: item.author || 'Unknown',
-                    tags: item.tags || [],
-                    createTime: item.createTime
-                }));
-
-                res.json({
-                    total: response.data.page.totalCount,
-                    page: page,
-                    limit: limit,
-                    data: methods
-                });
-            } else {
-                res.status(500).json({ error: response.data.msg });
-            }
+            const payload = await fetchDataMethodListPage(page, limit);
+            res.json(payload);
             return;
         }
 
-        // 有搜索时，请求更多数据进行过滤（限制 500 条以避免太慢）
+        // 有搜索时，请求一批数据进行过滤，并对上游结果做短期缓存。
         const searchLimit = 500;
-        const response = await api.get(`/container/method/listWithTag`, {
-            params: { page: 1, limit: searchLimit }
-        });
-
-        if (response.data.code === 0) {
-            // 过滤匹配搜索词的方法
-            const allMethods = response.data.page.list
-                .filter(item =>
-                    item.name.toLowerCase().includes(search) ||
-                    (item.description && item.description.toLowerCase().includes(search))
-                )
-                .map(item => ({
-                    id: item.id,
-                    name: item.name,
-                    description: item.description,
-                    author: item.author || 'Unknown',
-                    tags: item.tags || [],
-                    createTime: item.createTime
-                }));
-
-            // 分页
-            const total = allMethods.length;
-            const startIndex = (page - 1) * limit;
-            const paginatedMethods = allMethods.slice(startIndex, startIndex + limit);
-
-            res.json({
-                total: total,
-                page: page,
-                limit: limit,
-                data: paginatedMethods,
-                searchNote: total >= searchLimit ? `搜索结果可能不完整（仅搜索前 ${searchLimit} 条）` : null
-            });
-        } else {
-            res.status(500).json({ error: response.data.msg });
+        const searchCacheKey = `search:${search}:page:${page}:limit:${limit}`;
+        const cachedSearchPayload = getCacheValue(searchCacheKey);
+        if (cachedSearchPayload) {
+            return res.json(cachedSearchPayload);
         }
+
+        const batch = await fetchSearchableDataMethodBatch(searchLimit);
+        const allMethods = batch.methods.filter(item =>
+            item.name.toLowerCase().includes(search) ||
+            (item.description && item.description.toLowerCase().includes(search))
+        );
+
+        const total = allMethods.length;
+        const startIndex = (page - 1) * limit;
+        const payload = {
+            total,
+            page,
+            limit,
+            data: allMethods.slice(startIndex, startIndex + limit),
+            searchNote: batch.totalCount > searchLimit ? `搜索结果可能不完整（仅搜索前 ${searchLimit} 条）` : null
+        };
+
+        setCacheValue(searchCacheKey, payload);
+        res.json(payload);
     } catch (error) {
         console.error('Error fetching data methods:', error.message);
         res.status(500).json({ error: 'Failed to fetch data methods' });
@@ -403,28 +698,143 @@ const loadModelData = () => {
     }
 };
 
-// List OGMS Models (from local JSON)
-app.get('/api/ogms/models', (req, res) => {
+function mapOgmsModelTags(itemClassifications) {
+    if (!Array.isArray(itemClassifications)) {
+        return [];
+    }
+
+    return itemClassifications
+        .map(tagId => OGMS_MODEL_TAG_NAME_MAP[String(tagId)])
+        .filter(Boolean);
+}
+
+async function fetchOgmsModelDetailByMd5(md5) {
+    const cacheKey = String(md5);
+    const cachedValue = getOgmsCacheValue(ogmsModelDetailCache, cacheKey);
+    if (cachedValue) {
+        return cachedValue;
+    }
+
+    const response = await ogmsApi.get(`/computableModel/ModelInfoAndClassifications_pid/${encodeURIComponent(md5)}`);
+    const detail = response.data?.data;
+    if (!detail) {
+        throw new Error(`OGMS model detail not found for ${md5}`);
+    }
+
+    const mappedDetail = {
+        description: detail.overview || detail.description || 'No description available',
+        author: detail.author || detail.authorEmail || 'Unknown',
+        tags: mapOgmsModelTags(detail.itemClassifications),
+        invokeCount: detail.invokeCount || 0,
+        shareCount: detail.shareCount || 0,
+        thumbsUpCount: detail.thumbsUpCount || 0,
+        deploy: !!detail.deploy,
+        online: !!detail.checkedModel?.online,
+        healthText: detail.checkedModel?.msg || null,
+        createTime: detail.createTime || null,
+        lastModifyTime: detail.lastModifyTime || null,
+        status: detail.status || null
+    };
+
+    setOgmsCacheValue(ogmsModelDetailCache, cacheKey, mappedDetail, OGMS_MODEL_DETAIL_CACHE_TTL_MS);
+    return mappedDetail;
+}
+
+async function fetchOgmsModelListPage(page, limit, searchText) {
+    const cacheKey = `${page}:${limit}:${searchText || ''}`;
+    const cachedValue = getOgmsCacheValue(ogmsModelListCache, cacheKey);
+    if (cachedValue) {
+        return cachedValue;
+    }
+
+    const response = await axios.post(
+        OGMS_DEPLOYED_MODEL_URL,
+        {
+            asc: false,
+            page,
+            pageSize: limit,
+            searchText: searchText || '',
+            sortField: 'viewCount'
+        },
+        {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }
+    );
+
+    const pageData = response.data?.data;
+    const content = Array.isArray(pageData?.content) ? pageData.content : [];
+    const models = await Promise.all(
+        content.map(async item => {
+            let detail = null;
+
+            if (item.md5) {
+                try {
+                    detail = await fetchOgmsModelDetailByMd5(item.md5);
+                } catch (error) {
+                    console.warn(`Failed to enrich OGMS model ${item.name}:`, error.message);
+                }
+            }
+
+            return {
+                id: item.id || item.md5 || item.name,
+                name: item.name,
+                description: detail?.description || 'No description available',
+                author: detail?.author || item.author || item.authorEmail || 'Unknown',
+                tags: detail?.tags || [],
+                viewCount: item.viewCount || 0,
+                invokeCount: detail?.invokeCount || 0,
+                shareCount: detail?.shareCount || 0,
+                thumbsUpCount: detail?.thumbsUpCount || 0,
+                deploy: detail?.deploy || false,
+                online: detail?.online || false,
+                healthText: detail?.healthText || null,
+                status: detail?.status || item.status || null,
+                createTime: detail?.createTime || item.createTime || null,
+                lastModifyTime: detail?.lastModifyTime || item.lastModifyTime || null
+            };
+        })
+    );
+
+    const payload = {
+        total: pageData?.total || models.length,
+        page,
+        limit,
+        data: models
+    };
+
+    setOgmsCacheValue(ogmsModelListCache, cacheKey, payload, OGMS_MODEL_LIST_CACHE_TTL_MS);
+    return payload;
+}
+
+// List OGMS Models (remote-first, local JSON fallback)
+app.get('/api/ogms/models', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 12;
-        const search = (req.query.q || '').toLowerCase();
+        const search = (req.query.q || '').trim();
 
+        try {
+            const payload = await fetchOgmsModelListPage(page, limit, search);
+            return res.json(payload);
+        } catch (remoteError) {
+            console.warn('Remote OGMS model list failed, fallback to local computeModel.json:', remoteError.message);
+        }
+
+        const normalizedSearch = search.toLowerCase();
         let models = loadModelData();
 
-        // Filter by search query
-        if (search) {
+        if (normalizedSearch) {
             models = models.filter(m =>
-                m.name.toLowerCase().includes(search) ||
-                (m.description && m.description.toLowerCase().includes(search))
+                m.name.toLowerCase().includes(normalizedSearch) ||
+                (m.description && m.description.toLowerCase().includes(normalizedSearch))
             );
         }
 
-        // Pagination
         const total = models.length;
         const startIndex = (page - 1) * limit;
-        const endIndex = startIndex + limit;
-        const paginatedModels = models.slice(startIndex, endIndex);
+        const paginatedModels = models.slice(startIndex, startIndex + limit);
 
         res.json({
             total,
@@ -818,10 +1228,22 @@ app.post('/api/ogms/models/refresh', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-    console.log(`DataMethod API: ${API_BASE_URL}`);
-    console.log(`OGMS Model API: ${OGMS_PORTAL_URL}`);
-    console.log(`GitHub OAuth callback: http://localhost:${PORT}/api/auth/github/callback`);
-    console.log(`Jupyter API: http://localhost:${PORT}/api/jupyter`);
+async function startServer() {
+    await initDatabase();
+
+    app.listen(PORT, () => {
+        const databaseInfo = getDatabaseInfo();
+        console.log(`Server is running on http://localhost:${PORT}`);
+        console.log(`DataMethod API: ${API_BASE_URL}`);
+        console.log(`OGMS Model API: ${OGMS_PORTAL_URL}`);
+        console.log(`MongoDB: ${databaseInfo.uri}/${databaseInfo.dbName}`);
+        console.log(`GitHub OAuth callback: http://localhost:${PORT}/api/auth/github/callback`);
+        console.log(`Google OAuth callback: http://localhost:${PORT}/api/auth/google/callback`);
+        console.log(`Jupyter API: http://localhost:${PORT}/api/jupyter`);
+    });
+}
+
+startServer().catch((error) => {
+    console.error('Failed to start server:', error);
+    process.exit(1);
 });

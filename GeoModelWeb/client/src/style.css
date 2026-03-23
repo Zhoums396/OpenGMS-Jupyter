@@ -1,39 +1,37 @@
 :root {
-  /* 浅色科研风格配色 - 参考 OpenGMS 官方门户 */
-  --bg-color: #f5f7fa;
+  /* Unified scientific theme */
+  --bg-color: #eef2f6;
   --card-bg: #ffffff;
-  --text-primary: #303133;
-  --text-secondary: #606266;
-  --text-muted: #909399;
-  --accent-color: #409eff;
-  --accent-hover: #66b1ff;
-  --accent-light: rgba(64, 158, 255, 0.1);
-  --border-color: #e4e7ed;
-  --border-light: #ebeef5;
-  --success-color: #67c23a;
-  --warning-color: #e6a23c;
-  --danger-color: #f56c6c;
-  
-  /* 导航栏深蓝色 */
-  --nav-bg: #000000;
+  --text-primary: #182635;
+  --text-secondary: #4a5e73;
+  --text-muted: #77879a;
+  --accent-color: #2e618d;
+  --accent-hover: #244f75;
+  --accent-light: rgba(46, 97, 141, 0.12);
+  --border-color: #d4deea;
+  --border-light: #e6edf4;
+  --success-color: #2f7d4e;
+  --warning-color: #85682f;
+  --danger-color: #a64949;
+
+  --nav-bg: #0f1c2d;
   --nav-text: #ffffff;
   --nav-text-secondary: rgba(255, 255, 255, 0.7);
-  
-  /* 阴影 */
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
-  
-  /* RGB 值用于透明度 */
-  --accent-rgb: 64, 158, 255;
+
+  --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 6px 16px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 14px 28px rgba(15, 23, 42, 0.12);
+
+  --accent-rgb: 46, 97, 141;
 }
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'Avenir Next', 'Source Han Sans SC', 'Noto Sans SC', 'PingFang SC', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--bg-color);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
+  line-height: 1.55;
 }
 
 * {

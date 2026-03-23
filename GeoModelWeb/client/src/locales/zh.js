@@ -68,6 +68,14 @@ export default {
         unknown: '未知',
         type: '类型',
         size: '大小',
+        files: '文件数',
+        access: '访问',
+        public: '公开',
+        restricted: '受限',
+        resourceSet: '资源集',
+        themes: '主题',
+        domains: '领域',
+        views: '浏览',
         vector: '矢量',
         raster: '栅格',
         download: '下载',
@@ -90,7 +98,23 @@ export default {
     modelCard: {
         run: '运行',
         details: '详情',
-        updating: '更新中'
+        updating: '更新中',
+        catalog: '目录资源',
+        deployed: '已部署',
+        online: '在线',
+        views: '浏览',
+        runs: '运行',
+        updated: '更新',
+        healthy: '状态正常',
+        readyToRun: '可直接调用'
+    },
+    dataMethodCard: {
+        parameters: '参数',
+        inputs: '输入',
+        outputs: '输出',
+        options: '选项',
+        inputKinds: '输入类型',
+        outputKinds: '输出类型'
     },
     runModal: {
         title: '运行 {name}',

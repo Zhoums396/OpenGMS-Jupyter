@@ -1,55 +1,91 @@
 <template>
-  <div class="data-card" @click="handleClick">
-    <div class="card-header">
-      <div class="data-icon">{{ getDataIcon(data.type) }}</div>
-      <div class="header-info">
+  <article class="data-list-item" @click="handleClick">
+    <header class="data-topline">
+      <div class="data-heading">
         <h3 :title="data.name">{{ data.name }}</h3>
-        <span class="geo-type" :class="data.geoType === '矢量' ? 'vector' : 'raster'">
-          {{ getGeoTypeLabel(data.geoType) }}
-        </span>
+        <div class="badge-row">
+          <span v-if="headerBadge" class="chip geo-chip" :class="headerBadge.className">
+            {{ headerBadge.label }}
+          </span>
+          <span v-if="primaryFormat" class="chip neutral-chip">{{ primaryFormat }}</span>
+          <span v-if="data.publicBoolean" class="chip public-chip">{{ $t('dataCard.public') }}</span>
+        </div>
       </div>
-    </div>
-    
-    <div class="card-body">
-      <p class="description" :title="data.description">{{ truncate(data.description, 80) }}</p>
-      
-      <div class="meta-info">
-        <span class="meta-item">
-          <span class="meta-label">{{ $t('dataCard.type') }}</span>
-          <span class="meta-value type-tag">{{ data.type?.toUpperCase() || $t('dataCard.unknown') }}</span>
-        </span>
-        <span class="meta-item">
-          <span class="meta-label">{{ $t('dataCard.size') }}</span>
-          <span class="meta-value">{{ formatSize(data.fileSize) }}</span>
-        </span>
+
+      <div class="headline-metrics">
+        <span class="headline-pill">{{ resolvedSize }}</span>
+        <span class="headline-pill">{{ fileCount }} {{ $t('dataCard.files') }}</span>
+        <span class="headline-pill">{{ formatCompactNumber(normalizedViews) }} {{ $t('dataCard.views') }}</span>
       </div>
-      
-      <div class="tags" v-if="data.problemTags">
-        <span class="tag">{{ data.problemTags }}</span>
+    </header>
+
+    <div class="data-body">
+      <div class="media-column">
+        <img
+          v-if="activePreviewUrl"
+          :src="activePreviewUrl"
+          :alt="data.name"
+          class="preview-image"
+          @error="handlePreviewError"
+        >
+        <div v-else class="format-tile" :class="headerBadge?.className || 'generic'">
+          <span class="format-code">{{ primaryFormat || 'DATA' }}</span>
+        </div>
       </div>
-    </div>
-    
-    <div class="card-footer">
-      <div class="footer-left">
-        <span class="author" :title="data.userEmail">
-          {{ data.userEmail || 'Unknown' }}
-        </span>
-        <span class="time">{{ formatTime(data.createTime) }}</span>
+
+      <div class="summary-column">
+        <p class="description" :title="resolvedDescription">
+          {{ truncate(resolvedDescription, 220) }}
+        </p>
+
+        <div class="meta-line" v-if="themeTags.length">
+          <span class="meta-label">{{ $t('dataCard.themes') }}</span>
+          <div class="tag-row">
+            <span v-for="tag in themeTags.slice(0, 2)" :key="`theme-${tag}`" class="tag-chip theme-tag">
+              {{ tag }}
+            </span>
+          </div>
+        </div>
+
+        <div class="meta-line" v-if="domainTags.length">
+          <span class="meta-label">{{ $t('dataCard.domains') }}</span>
+          <div class="tag-row">
+            <span v-for="tag in domainTags.slice(0, 4)" :key="`domain-${tag}`" class="tag-chip domain-tag">
+              {{ tag }}
+            </span>
+          </div>
+        </div>
       </div>
-      <div class="footer-right">
-        <span class="view-count" v-if="data.pageviews">
-          {{ data.pageviews }}
-        </span>
-        <button class="action-btn" @click.stop="handleDownload">
+
+      <aside class="action-column">
+        <div class="side-stat">
+          <span class="stat-label">{{ $t('dataCard.access') }}</span>
+          <strong>{{ data.publicBoolean ? $t('dataCard.public') : $t('dataCard.restricted') }}</strong>
+        </div>
+        <button class="download-btn" @click.stop="handleDownload">
           {{ $t('dataCard.download') }}
         </button>
-      </div>
+      </aside>
     </div>
-  </div>
+
+    <footer class="data-footer">
+      <div class="footer-meta">
+        <span class="author-avatar">{{ authorInitial }}</span>
+        <span class="author-text" :title="data.userEmail || $t('dataCard.unknown')">
+          {{ compactAuthor }}
+        </span>
+      </div>
+
+      <div class="footer-meta">
+        <span class="footer-chip">{{ data.publicBoolean ? $t('dataCard.public') : $t('dataCard.restricted') }}</span>
+        <span class="footer-date">{{ formatTime(data.createTime) }}</span>
+      </div>
+    </footer>
+  </article>
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -63,249 +99,554 @@ const props = defineProps({
 
 const emit = defineEmits(['view', 'download'])
 
-const truncate = (text, length) => {
-  if (!text) return t('dataCard.noDescription')
-  return text.length > length ? text.substring(0, length) + '...' : text
+const VECTOR_TYPES = new Set(['shp', 'geojson', 'json', 'kml', 'kmz', 'gpx', 'gpkg'])
+const RASTER_TYPES = new Set(['tif', 'tiff', 'geotiff', 'img', 'dem', 'asc', 'grd', 'nc', 'netcdf', 'hdf', 'h5'])
+const TABLE_TYPES = new Set(['csv', 'tsv', 'xlsx', 'xls'])
+const ARCHIVE_TYPES = new Set(['zip', 'rar', '7z', 'tar', 'gz'])
+const DOCUMENT_TYPES = new Set(['html', 'htm', 'pdf', 'txt', 'doc', 'docx', 'xml', 'license'])
+const CODE_TYPES = new Set(['py', 'js', 'ts', 'java', 'cpp', 'c', 'iml', 'mdl'])
+const DATA_CENTER_BASE_URL = 'https://geomodeling.njnu.edu.cn/OpenGMPBack'
+const DATA_CENTER_WEB_HOST = 'https://geomodeling.njnu.edu.cn'
+const DATA_CENTER_NODE_HOST = 'https://geomodeling.njnu.edu.cn/OpenGMPNodeBack'
+
+const fileCount = computed(() => {
+  const count = props.data.subDataItems?.length || 0
+  return count > 0 ? count : 1
+})
+
+const resolvedDescription = computed(() => {
+  const description = String(props.data.description || '').trim()
+  if (description) return description
+
+  const subDescription = String(props.data.subDataItems?.[0]?.description || '').trim()
+  if (subDescription) return subDescription
+
+  return t('dataCard.noDescription')
+})
+
+const normalizedViews = computed(() => {
+  const value = Number(props.data.pageviews)
+  return Number.isFinite(value) && value > 0 ? value : 0
+})
+
+const themeTags = computed(() => splitTags(props.data.problemTags))
+const domainTags = computed(() => splitTags(props.data.normalTags))
+
+const compactAuthor = computed(() => {
+  const value = String(props.data.userEmail || '').trim()
+  if (!value) return t('dataCard.unknown')
+  if (value.length <= 28) return value
+  return `${value.slice(0, 14)}...${value.slice(-8)}`
+})
+
+const authorInitial = computed(() => {
+  const value = String(props.data.userEmail || '').trim()
+  return value ? value[0].toUpperCase() : 'U'
+})
+
+const normalizePreviewCandidate = (value) => {
+  const text = String(value || '').trim()
+  if (!text) return []
+
+  if (text.startsWith('http://') || text.startsWith('https://')) return [text]
+
+  if (text.startsWith('/store/')) {
+    return [
+      `${DATA_CENTER_BASE_URL}${text}`,
+      `${DATA_CENTER_WEB_HOST}${text}`,
+      `${DATA_CENTER_NODE_HOST}${text}`
+    ]
+  }
+
+  if (text.startsWith('/resourceData/')) {
+    return [
+      `${DATA_CENTER_BASE_URL}${text}`,
+      `${DATA_CENTER_BASE_URL}/store${text}`,
+      `${DATA_CENTER_WEB_HOST}${text}`,
+      `${DATA_CENTER_WEB_HOST}/store${text}`,
+      `${DATA_CENTER_NODE_HOST}${text}`,
+      `${DATA_CENTER_NODE_HOST}/store${text}`
+    ]
+  }
+
+  if (text.startsWith('/')) {
+    return [
+      `${DATA_CENTER_BASE_URL}${text}`,
+      `${DATA_CENTER_WEB_HOST}${text}`,
+      `${DATA_CENTER_NODE_HOST}${text}`
+    ]
+  }
+
+  return [
+    `${DATA_CENTER_BASE_URL}/${text}`,
+    `${DATA_CENTER_WEB_HOST}/${text}`,
+    `${DATA_CENTER_NODE_HOST}/${text}`
+  ]
 }
 
-const getGeoTypeLabel = (geoType) => {
-  if (!geoType) return t('dataCard.unknownType')
-  if (geoType === '矢量') return t('dataCard.vector')
-  if (geoType === '栅格') return t('dataCard.raster')
-  return geoType
+const previewCandidates = computed(() => {
+  const input = [
+    ...(Array.isArray(props.data.thumbnailCandidates) ? props.data.thumbnailCandidates : []),
+    props.data.thumbnailUrl,
+    props.data.imgWebAddress,
+    props.data.imgRelativePath,
+    props.data.subDataItems?.[0]?.visualWebAddress
+  ]
+
+  const seen = new Set()
+  const resolved = []
+
+  input.forEach(candidate => {
+    normalizePreviewCandidate(candidate).forEach(url => {
+      if (!seen.has(url)) {
+        seen.add(url)
+        resolved.push(url)
+      }
+    })
+  })
+
+  return resolved
+})
+
+const previewCandidateIndex = ref(0)
+
+watch(previewCandidates, () => {
+  previewCandidateIndex.value = 0
+}, { immediate: true })
+
+const activePreviewUrl = computed(() => previewCandidates.value[previewCandidateIndex.value] || '')
+
+const handlePreviewError = () => {
+  if (previewCandidateIndex.value < previewCandidates.value.length - 1) {
+    previewCandidateIndex.value += 1
+    return
+  }
+
+  previewCandidateIndex.value = previewCandidates.value.length
+}
+
+const getFirstSubType = (data) => {
+  const subType = data.subDataItems?.[0]?.type
+  if (subType) return String(subType).trim()
+
+  const subName = data.subDataItems?.[0]?.name
+  if (subName && subName.includes('.')) return subName.split('.').pop()
+
+  return ''
+}
+
+const primaryFormat = computed(() => {
+  const rawType = getFirstSubType(props.data) || props.data.type || ''
+  if (!rawType) return ''
+
+  const normalized = rawType.toLowerCase()
+  if (normalized === 'data') return fileCount.value > 1 ? t('dataCard.resourceSet') : 'DATA'
+  return rawType.toUpperCase()
+})
+
+const headerBadge = computed(() => {
+  const geoType = props.data.geoType
+  if (geoType === '矢量' || geoType === 'vector') return { label: t('dataCard.vector'), className: 'vector' }
+  if (geoType === '栅格' || geoType === 'raster') return { label: t('dataCard.raster'), className: 'raster' }
+
+  const rawSubType = getFirstSubType(props.data)
+  if (!rawSubType) return null
+
+  const normalizedSubType = rawSubType.toLowerCase()
+  if (VECTOR_TYPES.has(normalizedSubType)) return { label: t('dataCard.vector'), className: 'vector' }
+  if (RASTER_TYPES.has(normalizedSubType)) return { label: t('dataCard.raster'), className: 'raster' }
+  if (TABLE_TYPES.has(normalizedSubType)) return { label: rawSubType.toUpperCase(), className: 'table' }
+  if (ARCHIVE_TYPES.has(normalizedSubType)) return { label: rawSubType.toUpperCase(), className: 'archive' }
+  if (DOCUMENT_TYPES.has(normalizedSubType)) return { label: rawSubType.toUpperCase(), className: 'document' }
+  if (CODE_TYPES.has(normalizedSubType)) return { label: rawSubType.toUpperCase(), className: 'code' }
+  return { label: rawSubType.toUpperCase(), className: 'generic' }
+})
+
+const resolvedSize = computed(() => {
+  if (props.data.fileSize) return formatSize(props.data.fileSize)
+
+  const firstSize = props.data.subDataItems?.[0]?.size
+  if (firstSize) return normalizeSubItemSize(firstSize)
+
+  return t('dataCard.unknown')
+})
+
+const splitTags = (value) => {
+  if (!value) return []
+  return String(value)
+    .split(/[，,]/)
+    .map(item => item.trim())
+    .filter(Boolean)
+}
+
+const truncate = (text, length) => {
+  if (!text) return t('dataCard.noDescription')
+  return text.length > length ? `${text.slice(0, length)}...` : text
 }
 
 const formatSize = (bytes) => {
-  if (!bytes) return t('dataCard.unknown')
-  const size = parseInt(bytes)
-  if (size < 1024) return size + ' B'
-  if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB'
-  if (size < 1024 * 1024 * 1024) return (size / (1024 * 1024)).toFixed(1) + ' MB'
-  return (size / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
+  const size = Number.parseInt(bytes, 10)
+  if (!Number.isFinite(size) || size <= 0) return t('dataCard.unknown')
+  if (size < 1024) return `${size} B`
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
+  if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`
+  return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
+
+const normalizeSubItemSize = (value) => {
+  const text = String(value).trim()
+  if (!text) return t('dataCard.unknown')
+  if (/^[\d.]+\s*(KB|MB|GB|B)$/i.test(text)) return text.toUpperCase()
+
+  const numeric = Number.parseFloat(text)
+  if (Number.isFinite(numeric) && numeric > 0) return formatSize(numeric)
+  return text
 }
 
 const formatTime = (timeStr) => {
-  if (!timeStr) return ''
-  // 只显示日期部分
-  return timeStr.split(' ')[0]
+  if (!timeStr) return '--'
+  return String(timeStr).split(' ')[0]
 }
 
-const getDataIcon = (type) => {
-  const iconMap = {
-    'shp': '',
-    'tiff': '',
-    'tif': '',
-    'csv': '',
-    'json': '',
-    'geojson': '',
-    'nc': '',
-    'netcdf': '',
-    'xlsx': '',
-    'xls': '',
-    'zip': '',
-    'pdf': '',
-    'txt': ''
-  }
-  return iconMap[type?.toLowerCase()] || ''
+const formatCompactNumber = (value) => {
+  const count = Number(value)
+  if (!Number.isFinite(count) || count <= 0) return '0'
+  if (count >= 1000000) return `${(count / 1000000).toFixed(1).replace(/\.0$/, '')}M`
+  if (count >= 1000) return `${(count / 1000).toFixed(1).replace(/\.0$/, '')}k`
+  return String(count)
 }
 
-const handleClick = () => {
-  emit('view', props.data)
-}
-
-const handleDownload = () => {
-  emit('download', props.data)
-}
+const handleClick = () => emit('view', props.data)
+const handleDownload = () => emit('download', props.data)
 </script>
 
 <style scoped>
-.data-card {
-  background: var(--card-bg);
+.data-list-item {
+  background: #ffffff;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1.25rem;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 240px;
+  border-radius: 16px;
   box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.data-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--accent-color);
+.data-list-item:hover {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  box-shadow: var(--shadow-md);
 }
 
-.card-header {
+.data-topline,
+.data-body,
+.data-footer {
+  padding-left: 1.35rem;
+  padding-right: 1.35rem;
+}
+
+.data-topline {
   display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding-top: 1.2rem;
 }
 
-.data-icon {
-  font-size: 2rem;
-  flex-shrink: 0;
+.data-heading h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.42rem;
+  line-height: 1.18;
+  letter-spacing: -0.02em;
 }
 
-.header-info {
-  flex: 1;
+.badge-row,
+.headline-metrics,
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.badge-row {
+  margin-top: 0.7rem;
+}
+
+.chip,
+.headline-pill,
+.tag-chip,
+.footer-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.32rem 0.72rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.neutral-chip,
+.headline-pill {
+  background: rgba(15, 23, 42, 0.05);
+  color: var(--text-secondary);
+}
+
+.geo-chip.vector {
+  background: rgba(47, 125, 78, 0.12);
+  color: var(--success-color);
+}
+
+.geo-chip.raster,
+.domain-tag {
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--accent-color);
+}
+
+.geo-chip.table,
+.theme-tag {
+  background: var(--accent-light);
+  color: var(--accent-color);
+}
+
+.geo-chip.archive,
+.geo-chip.document,
+.geo-chip.code,
+.geo-chip.generic {
+  background: rgba(15, 23, 42, 0.05);
+  color: var(--text-secondary);
+}
+
+.public-chip,
+.footer-chip {
+  background: rgba(47, 125, 78, 0.12);
+  color: var(--success-color);
+}
+
+.data-body {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr) 170px;
+  gap: 1rem 1.25rem;
+  align-items: center;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.media-column {
+  display: flex;
+  justify-content: center;
+}
+
+.preview-image,
+.format-tile {
+  width: 96px;
+  height: 96px;
+  border-radius: 20px;
+}
+
+.preview-image {
+  object-fit: cover;
+  background: #f7f8fa;
+  border: 1px solid var(--border-light);
+}
+
+.format-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid transparent;
+}
+
+.format-tile.vector {
+  background: rgba(47, 125, 78, 0.1);
+  border-color: rgba(47, 125, 78, 0.18);
+}
+
+.format-tile.raster {
+  background: rgba(var(--accent-rgb), 0.08);
+  border-color: rgba(var(--accent-rgb), 0.16);
+}
+
+.format-tile.table {
+  background: var(--accent-light);
+  border-color: rgba(var(--accent-rgb), 0.2);
+}
+
+.format-tile.archive,
+.format-tile.document,
+.format-tile.code,
+.format-tile.generic {
+  background: rgba(15, 23, 42, 0.05);
+  border-color: rgba(15, 23, 42, 0.06);
+}
+
+.format-code {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 800;
+  max-width: 78px;
+  text-align: center;
+  word-break: break-word;
+}
+
+.summary-column {
   min-width: 0;
 }
 
-.header-info h3 {
-  margin: 0 0 6px 0;
-  font-size: 1.05rem;
-  color: var(--text-primary);
-  font-weight: 600;
-  line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.geo-type {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.7rem;
-  font-weight: 500;
-}
-
-.geo-type.vector {
-  background: rgba(103, 194, 58, 0.1);
-  color: #67c23a;
-  border: 1px solid rgba(103, 194, 58, 0.3);
-}
-
-.geo-type.raster {
-  background: rgba(230, 162, 60, 0.1);
-  color: #e6a23c;
-  border: 1px solid rgba(230, 162, 60, 0.3);
-}
-
-.card-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 .description {
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  line-height: 1.5;
   margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.97rem;
+  line-height: 1.72;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.meta-info {
+.meta-line {
   display: flex;
-  gap: 16px;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: flex-start;
+  gap: 0.8rem;
+  margin-top: 0.9rem;
 }
 
 .meta-label {
-  font-size: 0.75rem;
+  min-width: 56px;
+  padding-top: 0.15rem;
   color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
-.meta-value {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.type-tag {
-  background: var(--accent-light);
-  color: var(--accent-color);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-.tags {
+.action-column {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.85rem;
 }
 
-.tag {
-  background: var(--accent-light);
-  color: var(--accent-color);
-  padding: 3px 10px;
-  border-radius: 4px;
-  font-size: 0.75rem;
+.side-stat {
+  padding: 0.85rem 0.9rem;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid var(--border-light);
 }
 
-.card-footer {
+.stat-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.35rem;
+}
+
+.side-stat strong {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.download-btn {
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--accent-color);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.18s ease;
+}
+
+.download-btn:hover {
+  background: var(--accent-hover);
+}
+
+.data-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 12px;
-  margin-top: 12px;
+  gap: 1rem;
+  padding-top: 0.9rem;
+  padding-bottom: 0.95rem;
   border-top: 1px solid var(--border-light);
-  gap: 8px;
+  background: #fbfcfd;
 }
 
-.footer-left {
+.footer-meta {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 0.7rem;
   min-width: 0;
-  flex: 1;
 }
 
-.author {
-  font-size: 0.8rem;
+.author-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.84rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.author-text,
+.footer-date {
   color: var(--text-secondary);
+  font-size: 0.86rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.time {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+@media (max-width: 980px) {
+  .data-body {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .action-column {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  .side-stat {
+    min-width: 180px;
+  }
+
+  .download-btn {
+    min-width: 180px;
+  }
 }
 
-.footer-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
+@media (max-width: 720px) {
+  .data-topline,
+  .data-footer,
+  .footer-meta,
+  .action-column,
+  .meta-line {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 
-.view-count {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
+  .data-body {
+    grid-template-columns: 1fr;
+  }
 
-.action-btn {
-  background: var(--accent-color);
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
+  .preview-image,
+  .format-tile {
+    width: 84px;
+    height: 84px;
+  }
 
-.action-btn:hover {
-  background: var(--accent-hover);
-  transform: translateY(-1px);
+  .action-column,
+  .side-stat,
+  .download-btn {
+    width: 100%;
+  }
 }
 </style>

@@ -191,8 +191,9 @@ onMounted(() => {
 .view-header h1 {
   font-size: 2rem;
   margin-bottom: 0.5rem;
-  color: #000000;
-  font-weight: 600;
+  color: var(--text-primary);
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .subtitle {
@@ -228,23 +229,22 @@ onMounted(() => {
 .search-btn {
   padding: 0 1.5rem;
   background: var(--accent-color);
-  border: none;
+  border: 1px solid transparent;
   border-radius: 6px;
   color: white;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+  transition: background-color 0.2s;
 }
 
 .search-btn:hover {
   background: var(--accent-hover);
-  transform: translateY(-1px);
 }
 
 .model-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
   margin-bottom: 2rem;
 }
 
