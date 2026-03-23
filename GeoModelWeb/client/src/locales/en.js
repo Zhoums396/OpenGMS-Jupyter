@@ -68,6 +68,14 @@ export default {
         unknown: 'Unknown',
         type: 'Type',
         size: 'Size',
+        files: 'Files',
+        access: 'Access',
+        public: 'Public',
+        restricted: 'Restricted',
+        resourceSet: 'Resource Set',
+        themes: 'Themes',
+        domains: 'Domains',
+        views: 'views',
         vector: 'Vector',
         raster: 'Raster',
         download: 'Download',
@@ -90,7 +98,23 @@ export default {
     modelCard: {
         run: 'Run',
         details: 'Details',
-        updating: 'Updating'
+        updating: 'Updating',
+        catalog: 'Catalog',
+        deployed: 'Deployed',
+        online: 'Online',
+        views: 'views',
+        runs: 'runs',
+        updated: 'updated',
+        healthy: 'Healthy',
+        readyToRun: 'Ready for execution'
+    },
+    dataMethodCard: {
+        parameters: 'params',
+        inputs: 'inputs',
+        outputs: 'outputs',
+        options: 'options',
+        inputKinds: 'Input kinds',
+        outputKinds: 'Output kinds'
     },
     runModal: {
         title: 'Run {name}',

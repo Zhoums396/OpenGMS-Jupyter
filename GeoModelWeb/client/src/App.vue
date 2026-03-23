@@ -146,25 +146,27 @@ const toggleLocale = () => {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, #ff9800, #4caf50);
-  border: none;
-  border-radius: 4px;
+  padding: 0.52rem 1rem;
+  background-color: var(--accent-color);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
   color: white;
   text-decoration: none;
   font-weight: 600;
   font-size: 0.9rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+  letter-spacing: 0.01em;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  box-shadow: none;
 }
 
 .jupyter-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+  background-color: var(--accent-hover);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .jupyter-btn.active {
-  box-shadow: 0 0 12px rgba(255, 152, 0, 0.5);
+  background-color: var(--accent-hover);
+  border-color: rgba(255, 255, 255, 0.26);
 }
 
 .lang-switcher {

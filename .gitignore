@@ -64,6 +64,8 @@ Thumbs.db
 
 # Large files
 GeoModelWeb/server/data/computeModel.json
+GeoModelWeb/server/data/*.sqlite
+GeoModelWeb/server/data/*.sqlite-*
 GeoModelWeb/server/jupyter-data/
 
 agent-service/data/conversations

@@ -50,14 +50,75 @@
           </div>
         </div>
 
-        <button class="github-login-btn" @click="loginWithGitHub" :disabled="isLoading">
-          <svg class="github-icon" viewBox="0 0 24 24" width="24" height="24">
-            <path fill="currentColor" d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-          </svg>
-          <span>{{ isLoading ? '登录中...' : '使用 GitHub 登录' }}</span>
-        </button>
+        <div class="login-form">
+          <label class="login-label" for="opengms-email">OpenGMS Email</label>
+          <input
+            id="opengms-email"
+            v-model.trim="loginForm.email"
+            class="login-input"
+            type="email"
+            autocomplete="username"
+            placeholder="请输入 OpenGMS 邮箱"
+            @keyup.enter="loginWithOpenGMS"
+          >
 
-        <p class="login-hint">使用 GitHub 账户安全登录，无需额外注册</p>
+          <label class="login-label" for="opengms-password">Password</label>
+          <input
+            id="opengms-password"
+            v-model="loginForm.password"
+            class="login-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="请输入密码"
+            @keyup.enter="loginWithOpenGMS"
+          >
+
+          <button class="opengms-login-btn" @click="loginWithOpenGMS" :disabled="isLoading">
+            <span>{{ isLoading ? '登录中...' : '使用 OpenGMS 账号登录' }}</span>
+          </button>
+        </div>
+
+        <div class="login-divider">
+          <span>or continue with</span>
+        </div>
+
+        <div class="social-login-grid">
+          <button
+            class="social-login-btn github-btn"
+            type="button"
+            :disabled="isLoading || !!socialLoadingProvider"
+            @click="startOAuthLogin('github')"
+          >
+            <span class="social-login-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="img">
+                <path
+                  fill="currentColor"
+                  d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.57.1.78-.25.78-.56 0-.28-.01-1.18-.02-2.14-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.74.4-1.25.73-1.54-2.55-.29-5.23-1.28-5.23-5.67 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 5.74 0c2.19-1.49 3.15-1.18 3.15-1.18.62 1.59.23 2.76.11 3.05.73.8 1.18 1.83 1.18 3.08 0 4.4-2.68 5.37-5.24 5.66.41.35.78 1.04.78 2.1 0 1.52-.01 2.74-.01 3.11 0 .31.2.67.79.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"
+                />
+              </svg>
+            </span>
+            <span>{{ socialLoadingProvider === 'github' ? 'Redirecting...' : 'Continue with GitHub' }}</span>
+          </button>
+
+          <button
+            class="social-login-btn google-btn"
+            type="button"
+            :disabled="isLoading || !!socialLoadingProvider"
+            @click="startOAuthLogin('google')"
+          >
+            <span class="social-login-icon" aria-hidden="true">
+              <svg viewBox="0 0 18 18" role="img">
+                <path fill="#4285F4" d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.482h4.844c-.209 1.125-.843 2.078-1.798 2.715v2.259h2.909c1.703-1.567 2.685-3.877 2.685-6.615Z" />
+                <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.955-2.18l-2.909-2.26c-.806.541-1.836 1.228-3.046 1.228-2.344 0-4.328-1.584-5.037-3.712H.957A9 9 0 0 0 9 18Z" />
+                <path fill="#FBBC05" d="M3.963 11.076A5.41 5.41 0 0 1 3.679 9c0-.586.103-1.164.284-1.705V4.962H.957A9 9 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.006-2.334Z" />
+                <path fill="#EA4335" d="M9 3.58c1.322 0 2.508.454 3.44 1.345l2.582-2.582C13.464.892 11.427 0 9 0A9 9 0 0 0 .957 4.957l3.006 2.333C4.672 5.164 6.656 3.58 9 3.58Z" />
+              </svg>
+            </span>
+            <span>{{ socialLoadingProvider === 'google' ? 'Redirecting...' : 'Continue with Google' }}</span>
+          </button>
+        </div>
+
+        <p class="login-hint">当前页面同时支持 OpenGMS、GitHub 和 Google 登录。OpenGMS 仍是主入口。</p>
       </div>
     </div>
 
@@ -1082,6 +1143,11 @@ const router = useRouter()
 
 // 状态
 const isLoading = ref(false)
+const socialLoadingProvider = ref('')
+const loginForm = ref({
+  email: '',
+  password: ''
+})
 const isCreating = ref(false)
 const user = ref(null)
 const projects = ref([])
@@ -1157,6 +1223,18 @@ const toastMessage = ref('')
 const toastType = ref('success') // success, error, warning, info
 const showToast = ref(false)
 let toastTimer = null
+const oauthErrorMessages = {
+  github_not_configured: 'GitHub 登录尚未配置',
+  github_no_code: 'GitHub 未返回授权码，请重试',
+  github_token_failed: 'GitHub 令牌获取失败',
+  github_oauth_failed: 'GitHub 登录失败，请稍后重试',
+  google_not_configured: 'Google 登录尚未配置',
+  google_access_denied: '你已取消 Google 登录授权',
+  google_no_code: 'Google 未返回授权码，请重试',
+  google_token_failed: 'Google 令牌获取失败',
+  google_profile_failed: 'Google 账户信息获取失败',
+  google_oauth_failed: 'Google 登录失败，请稍后重试'
+}
 
 // 显示提示框
 const showToastMessage = (message, type = 'success', duration = 3000) => {
@@ -1661,10 +1739,59 @@ const authAxios = () => {
   })
 }
 
-// GitHub 登录
-const loginWithGitHub = () => {
+const getAuthBaseUrl = () => {
+  const envBaseUrl = import.meta.env.VITE_API_BASE_URL
+  if (envBaseUrl) {
+    return envBaseUrl.replace(/\/+$/, '')
+  }
+
+  return window.location.origin.replace(/\/+$/, '')
+}
+
+const startOAuthLogin = (provider) => {
+  socialLoadingProvider.value = provider
+  window.location.assign(`${getAuthBaseUrl()}/api/auth/${provider}`)
+}
+
+// OpenGMS 登录
+const loginWithOpenGMS = async () => {
+  if (!loginForm.value.email || !loginForm.value.password) {
+    showToastMessage('请输入 OpenGMS 邮箱和密码', 'warning')
+    return
+  }
+
   isLoading.value = true
-  window.location.href = '/api/auth/github'
+  try {
+    const res = await axios.post('/api/auth/opengms/login', {
+      email: loginForm.value.email,
+      password: loginForm.value.password
+    })
+
+    if (!res.data?.token) {
+      throw new Error(res.data?.error || '登录失败')
+    }
+
+    setToken(res.data.token)
+    loginForm.value.password = ''
+
+    const loggedIn = await fetchUser()
+    if (!loggedIn) {
+      throw new Error('登录状态校验失败')
+    }
+
+    await Promise.all([
+      loadProjects(),
+      loadMyModels(),
+      loadMyDataMethods()
+    ])
+
+    showToastMessage('登录成功', 'success')
+  } catch (e) {
+    clearToken()
+    showToastMessage('登录失败: ' + (e.response?.data?.error || e.message), 'error')
+  } finally {
+    isLoading.value = false
+  }
 }
 
 // 登出
@@ -2454,11 +2581,19 @@ const formatDate = (dateStr) => {
 
 // 初始化
 onMounted(async () => {
+  const oauthError = route.query.error
   // 检查 URL 中是否有 token (OAuth 回调)
   const urlToken = route.query.token
   if (urlToken) {
     setToken(urlToken)
     router.replace('/jupyter') // 清除 URL 中的 token
+    return
+  }
+
+  if (typeof oauthError === 'string' && oauthError) {
+    showToastMessage(oauthErrorMessages[oauthError] || '第三方登录失败，请重试', 'error', 5000)
+    router.replace('/jupyter')
+    return
   }
   
   // 检查本地 token
@@ -2692,42 +2827,149 @@ onMounted(async () => {
   font-size: 1.8rem;
 }
 
-.github-login-btn {
+.login-form {
+  display: flex;
+  flex-direction: column;
+  margin-top: 2rem;
+  gap: 0.75rem;
+}
+
+.login-label {
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.login-input {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 1px solid #d8e1ec;
+  border-radius: 10px;
+  background: #fbfdff;
+  color: #213547;
+  font-size: 0.98rem;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: #2f7db8;
+  box-shadow: 0 0 0 3px rgba(47, 125, 184, 0.12);
+  background: #fff;
+}
+
+.opengms-login-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
   width: 100%;
   padding: 1rem 1.5rem;
-  background: #24292e;
+  margin-top: 0.5rem;
+  background: linear-gradient(135deg, #1368a2 0%, #0c8b8f 100%);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.github-login-btn:hover:not(:disabled) {
-  background: #2f363d;
+.opengms-login-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 24px rgba(19, 104, 162, 0.24);
 }
 
-.github-login-btn:disabled {
+.opengms-login-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
-.github-icon {
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+  color: #8a97a8;
+  font-size: 0.88rem;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(216, 225, 236, 0), rgba(216, 225, 236, 1));
+}
+
+.login-divider::after {
+  background: linear-gradient(90deg, rgba(216, 225, 236, 1), rgba(216, 225, 236, 0));
+}
+
+.social-login-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.social-login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border-radius: 10px;
+  border: 1px solid #d8e1ec;
+  background: #ffffff;
+  color: #223247;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.social-login-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.1);
+}
+
+.social-login-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.social-login-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
+}
+
+.social-login-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.github-btn .social-login-icon {
+  color: #111827;
 }
 
 .login-hint {
   color: #556;
   font-size: 0.9rem;
   margin-top: 2rem;
+}
+
+@media (max-width: 640px) {
+  .social-login-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ========== Dashboard 布局 - 仿 MyDDE 风格 ========== */
