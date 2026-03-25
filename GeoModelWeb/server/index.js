@@ -100,10 +100,14 @@ const api = axios.create({
 
 const DATA_METHOD_CACHE_TTL_MS = parseInt(process.env.DATA_METHOD_CACHE_TTL_MS || '300000', 10);
 const dataMethodCache = new Map();
+const DATA_METHOD_REPOSITORY_CACHE_TTL_MS = parseInt(process.env.DATA_METHOD_REPOSITORY_CACHE_TTL_MS || '21600000', 10);
 const OGMS_MODEL_LIST_CACHE_TTL_MS = parseInt(process.env.OGMS_MODEL_LIST_CACHE_TTL_MS || '300000', 10);
 const OGMS_MODEL_DETAIL_CACHE_TTL_MS = parseInt(process.env.OGMS_MODEL_DETAIL_CACHE_TTL_MS || '1800000', 10);
+const OGMS_MODEL_REPOSITORY_CACHE_TTL_MS = parseInt(process.env.OGMS_MODEL_REPOSITORY_CACHE_TTL_MS || '21600000', 10);
 const ogmsModelListCache = new Map();
 const ogmsModelDetailCache = new Map();
+const ogmsModelRepositoryCache = new Map();
+const dataMethodRepositoryCache = new Map();
 const DATA_METHOD_TAG_NAME_MAP = {
     '1': 'Math and Stats Tools',
     '2': 'Image Processing Tools',
@@ -160,6 +164,8 @@ const GEODATA_COMPONENTS_API_URL = 'http://nnu.geodata.cn/service/scidata/dataco
 const GEODATA_IMAGE_HOST = 'https://img.data.ac.cn';
 const DATA_CENTER_THUMBNAIL_CACHE_TTL_MS = parseInt(process.env.DATA_CENTER_THUMBNAIL_CACHE_TTL_MS || '21600000', 10);
 const dataCenterThumbnailCache = new Map();
+let ogmsModelRepositoryPromise = null;
+let dataMethodRepositoryPromise = null;
 
 function getCacheValue(cacheKey) {
     const entry = dataMethodCache.get(cacheKey);
@@ -201,6 +207,16 @@ function setOgmsCacheValue(cacheMap, cacheKey, value, ttlMs) {
         value,
         expiresAt: Date.now() + ttlMs
     });
+}
+
+async function mapInBatches(items, batchSize, mapper) {
+    const results = [];
+    for (let index = 0; index < items.length; index += batchSize) {
+        const batch = items.slice(index, index + batchSize);
+        const batchResults = await Promise.all(batch.map(mapper));
+        results.push(...batchResults);
+    }
+    return results;
 }
 
 function extractDataGuidFromAddress(address) {
@@ -375,6 +391,73 @@ function mapDataMethodSummary(item) {
     };
 }
 
+function normalizeMethodFacetLabel(value) {
+    return String(value || '')
+        .replace(/_/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function matchesMethodFilters(method, {
+    search = '',
+    facet = 'all',
+    interactive = false,
+    python = false
+} = {}) {
+    const normalizedSearch = String(search || '').trim().toLowerCase();
+    const facetValues = [method.engine, method.execution, method.methodType]
+        .filter(Boolean)
+        .map(normalizeMethodFacetLabel);
+
+    if (normalizedSearch) {
+        const haystacks = [
+            method.name,
+            method.description,
+            method.longDescription
+        ]
+            .map(value => String(value || '').toLowerCase());
+
+        if (!haystacks.some(value => value.includes(normalizedSearch))) {
+            return false;
+        }
+    }
+
+    if (facet && facet !== 'all' && !facetValues.includes(facet)) {
+        return false;
+    }
+
+    const execution = String(method.execution || '').toLowerCase();
+    const engine = String(method.engine || '').toLowerCase();
+
+    if (interactive && !execution.includes('interactive')) {
+        return false;
+    }
+
+    if (python && !engine.includes('python')) {
+        return false;
+    }
+
+    return true;
+}
+
+function buildMethodFacetCounts(methods) {
+    const map = new Map();
+
+    methods.forEach(method => {
+        [method.engine, method.execution, method.methodType]
+            .filter(Boolean)
+            .forEach(raw => {
+                const label = normalizeMethodFacetLabel(raw);
+                if (!label) return;
+                map.set(label, (map.get(label) || 0) + 1);
+            });
+    });
+
+    return Array.from(map.entries())
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+}
+
 async function fetchDataMethodListPage(page, limit) {
     const cacheKey = `page:${page}:limit:${limit}`;
     const cachedValue = getCacheValue(cacheKey);
@@ -424,6 +507,60 @@ async function fetchSearchableDataMethodBatch(searchLimit) {
 
     setCacheValue(cacheKey, payload);
     return payload;
+}
+
+async function fetchAllDataMethods() {
+    const cacheKey = 'all';
+    const cachedValue = getCacheValue(`repository:${cacheKey}`);
+    if (cachedValue) {
+        return cachedValue;
+    }
+
+    if (dataMethodRepositoryPromise) {
+        return dataMethodRepositoryPromise;
+    }
+
+    dataMethodRepositoryPromise = (async () => {
+        const firstPage = await api.get('/container/method/listWithStringTag', {
+            params: { page: 1, limit: 300 }
+        });
+
+        if (firstPage.data.code !== 0) {
+            throw new Error(firstPage.data.msg || 'Failed to fetch data methods repository');
+        }
+
+        const totalCount = firstPage.data.page.totalCount || 0;
+        const totalPages = Math.max(1, Math.ceil(totalCount / 300));
+        const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
+
+        const pageResponses = await Promise.all(pageNumbers.map(page =>
+            api.get('/container/method/listWithStringTag', {
+                params: { page, limit: 300 }
+            })
+        ));
+
+        const methods = pageResponses.flatMap(response =>
+            (Array.isArray(response.data?.page?.list) ? response.data.page.list : []).map(mapDataMethodSummary)
+        );
+
+        const payload = {
+            total: totalCount,
+            methods
+        };
+
+        dataMethodCache.set(`repository:${cacheKey}`, {
+            value: payload,
+            expiresAt: Date.now() + DATA_METHOD_REPOSITORY_CACHE_TTL_MS
+        });
+
+        return payload;
+    })();
+
+    try {
+        return await dataMethodRepositoryPromise;
+    } finally {
+        dataMethodRepositoryPromise = null;
+    }
 }
 
 // Health check endpoint
@@ -546,43 +683,63 @@ app.get('/api/datamethods', async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 12;
         const search = (req.query.q || '').trim().toLowerCase();
+        const facet = String(req.query.facet || 'all').trim();
+        const interactive = String(req.query.interactive || 'false') === 'true';
+        const python = String(req.query.python || 'false') === 'true';
 
-        // 无搜索时，直接分页请求后端 API
-        if (!search || search.length === 0) {
+        const requiresRepositoryFilter = Boolean(search) || facet !== 'all' || interactive || python;
+
+        // 无搜索、无附加过滤时，直接分页请求后端 API
+        if (!requiresRepositoryFilter) {
             const payload = await fetchDataMethodListPage(page, limit);
             res.json(payload);
             return;
         }
 
-        // 有搜索时，请求一批数据进行过滤，并对上游结果做短期缓存。
-        const searchLimit = 500;
-        const searchCacheKey = `search:${search}:page:${page}:limit:${limit}`;
-        const cachedSearchPayload = getCacheValue(searchCacheKey);
-        if (cachedSearchPayload) {
-            return res.json(cachedSearchPayload);
-        }
+        const repository = await fetchAllDataMethods();
+        const filteredMethods = repository.methods.filter(method => matchesMethodFilters(method, {
+            search,
+            facet,
+            interactive,
+            python
+        }));
 
-        const batch = await fetchSearchableDataMethodBatch(searchLimit);
-        const allMethods = batch.methods.filter(item =>
-            item.name.toLowerCase().includes(search) ||
-            (item.description && item.description.toLowerCase().includes(search))
-        );
-
-        const total = allMethods.length;
+        const total = filteredMethods.length;
         const startIndex = (page - 1) * limit;
         const payload = {
             total,
             page,
             limit,
-            data: allMethods.slice(startIndex, startIndex + limit),
-            searchNote: batch.totalCount > searchLimit ? `搜索结果可能不完整（仅搜索前 ${searchLimit} 条）` : null
+            data: filteredMethods.slice(startIndex, startIndex + limit),
+            searchNote: null
         };
-
-        setCacheValue(searchCacheKey, payload);
         res.json(payload);
     } catch (error) {
         console.error('Error fetching data methods:', error.message);
         res.status(500).json({ error: 'Failed to fetch data methods' });
+    }
+});
+
+app.get('/api/datamethods/facets', async (req, res) => {
+    try {
+        const search = (req.query.q || '').trim().toLowerCase();
+        const interactive = String(req.query.interactive || 'false') === 'true';
+        const python = String(req.query.python || 'false') === 'true';
+
+        const repository = await fetchAllDataMethods();
+        const scopedMethods = repository.methods.filter(method => matchesMethodFilters(method, {
+            search,
+            interactive,
+            python
+        }));
+
+        res.json({
+            total: scopedMethods.length,
+            facets: buildMethodFacetCounts(scopedMethods).slice(0, 8)
+        });
+    } catch (error) {
+        console.error('Error fetching data method facets:', error.message);
+        res.status(500).json({ error: 'Failed to fetch data method facets' });
     }
 });
 
@@ -708,6 +865,90 @@ function mapOgmsModelTags(itemClassifications) {
         .filter(Boolean);
 }
 
+function mapOgmsModelSummary(item, detail = null) {
+    return {
+        id: item.id || item.md5 || item.name,
+        name: item.name,
+        description: detail?.description || 'No description available',
+        author: detail?.author || item.author || item.authorEmail || 'Unknown',
+        tags: detail?.tags || [],
+        viewCount: item.viewCount || 0,
+        invokeCount: detail?.invokeCount || 0,
+        shareCount: detail?.shareCount || 0,
+        thumbsUpCount: detail?.thumbsUpCount || 0,
+        deploy: detail?.deploy || false,
+        online: detail?.online || false,
+        healthText: detail?.healthText || null,
+        status: detail?.status || item.status || null,
+        createTime: detail?.createTime || item.createTime || null,
+        lastModifyTime: detail?.lastModifyTime || item.lastModifyTime || null,
+        md5: item.md5 || null
+    };
+}
+
+function matchesOgmsModelFilters(model, {
+    search = '',
+    domain = 'all',
+    online = false,
+    publicOnly = false,
+    institutionalOnly = false
+} = {}) {
+    const normalizedSearch = String(search || '').trim().toLowerCase();
+
+    if (normalizedSearch) {
+        const haystacks = [
+            model.name,
+            model.description,
+            model.author
+        ]
+            .map(value => String(value || '').toLowerCase());
+
+        if (!haystacks.some(value => value.includes(normalizedSearch))) {
+            return false;
+        }
+    }
+
+    const tags = Array.isArray(model.tags) ? model.tags : [];
+    const statusText = String(model.status || '').toLowerCase();
+    const isPublic = statusText.includes('public') || statusText.includes('catalog');
+    const isInstitutional = statusText.includes('institutional') || statusText.includes('private');
+
+    if (domain && domain !== 'all' && !tags.includes(domain)) {
+        return false;
+    }
+
+    if (online && !model.online) {
+        return false;
+    }
+
+    if (publicOnly && !isPublic) {
+        return false;
+    }
+
+    if (institutionalOnly && !isInstitutional) {
+        return false;
+    }
+
+    return true;
+}
+
+function buildOgmsDomainFacetCounts(models) {
+    const map = new Map();
+
+    models.forEach(model => {
+        const tags = Array.isArray(model.tags) ? model.tags : [];
+        tags.forEach(tag => {
+            const label = String(tag || '').trim();
+            if (!label) return;
+            map.set(label, (map.get(label) || 0) + 1);
+        });
+    });
+
+    return Array.from(map.entries())
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+}
+
 async function fetchOgmsModelDetailByMd5(md5) {
     const cacheKey = String(md5);
     const cachedValue = getOgmsCacheValue(ogmsModelDetailCache, cacheKey);
@@ -738,6 +979,98 @@ async function fetchOgmsModelDetailByMd5(md5) {
 
     setOgmsCacheValue(ogmsModelDetailCache, cacheKey, mappedDetail, OGMS_MODEL_DETAIL_CACHE_TTL_MS);
     return mappedDetail;
+}
+
+async function fetchAllOgmsModelListItems() {
+    const pageSize = 1000;
+    const firstPage = await axios.post(
+        OGMS_DEPLOYED_MODEL_URL,
+        {
+            asc: false,
+            page: 1,
+            pageSize,
+            searchText: '',
+            sortField: 'viewCount'
+        },
+        {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }
+    );
+
+    const firstPayload = firstPage.data?.data;
+    const total = firstPayload?.total || 0;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const items = Array.isArray(firstPayload?.content) ? firstPayload.content : [];
+
+    if (totalPages === 1) {
+        return { total, items };
+    }
+
+    const pageNumbers = Array.from({ length: totalPages - 1 }, (_, index) => index + 2);
+    const remainingResponses = await Promise.all(pageNumbers.map(page =>
+        axios.post(
+            OGMS_DEPLOYED_MODEL_URL,
+            {
+                asc: false,
+                page,
+                pageSize,
+                searchText: '',
+                sortField: 'viewCount'
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        )
+    ));
+
+    remainingResponses.forEach(response => {
+        const content = Array.isArray(response.data?.data?.content) ? response.data.data.content : [];
+        items.push(...content);
+    });
+
+    return { total, items };
+}
+
+async function fetchOgmsModelRepository() {
+    const cacheKey = 'repository:all';
+    const cachedValue = getOgmsCacheValue(ogmsModelRepositoryCache, cacheKey);
+    if (cachedValue) {
+        return cachedValue;
+    }
+
+    if (ogmsModelRepositoryPromise) {
+        return ogmsModelRepositoryPromise;
+    }
+
+    ogmsModelRepositoryPromise = (async () => {
+        const { total, items } = await fetchAllOgmsModelListItems();
+
+        const models = await mapInBatches(items, 200, async item => {
+            let detail = null;
+            if (item.md5) {
+                try {
+                    detail = await fetchOgmsModelDetailByMd5(item.md5);
+                } catch (error) {
+                    console.warn(`Failed to enrich OGMS model ${item.name}:`, error.message);
+                }
+            }
+            return mapOgmsModelSummary(item, detail);
+        });
+
+        const payload = { total, models };
+        setOgmsCacheValue(ogmsModelRepositoryCache, cacheKey, payload, OGMS_MODEL_REPOSITORY_CACHE_TTL_MS);
+        return payload;
+    })();
+
+    try {
+        return await ogmsModelRepositoryPromise;
+    } finally {
+        ogmsModelRepositoryPromise = null;
+    }
 }
 
 async function fetchOgmsModelListPage(page, limit, searchText) {
@@ -777,23 +1110,7 @@ async function fetchOgmsModelListPage(page, limit, searchText) {
                 }
             }
 
-            return {
-                id: item.id || item.md5 || item.name,
-                name: item.name,
-                description: detail?.description || 'No description available',
-                author: detail?.author || item.author || item.authorEmail || 'Unknown',
-                tags: detail?.tags || [],
-                viewCount: item.viewCount || 0,
-                invokeCount: detail?.invokeCount || 0,
-                shareCount: detail?.shareCount || 0,
-                thumbsUpCount: detail?.thumbsUpCount || 0,
-                deploy: detail?.deploy || false,
-                online: detail?.online || false,
-                healthText: detail?.healthText || null,
-                status: detail?.status || item.status || null,
-                createTime: detail?.createTime || item.createTime || null,
-                lastModifyTime: detail?.lastModifyTime || item.lastModifyTime || null
-            };
+            return mapOgmsModelSummary(item, detail);
         })
     );
 
@@ -814,6 +1131,32 @@ app.get('/api/ogms/models', async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 12;
         const search = (req.query.q || '').trim();
+        const domain = String(req.query.domain || 'all').trim();
+        const online = String(req.query.online || 'false') === 'true';
+        const publicOnly = String(req.query.public || 'false') === 'true';
+        const institutionalOnly = String(req.query.institutional || 'false') === 'true';
+        const requiresRepositoryFilter = Boolean(search) || domain !== 'all' || online || publicOnly || institutionalOnly;
+
+        if (requiresRepositoryFilter) {
+            const repository = await fetchOgmsModelRepository();
+            const filteredModels = repository.models.filter(model => matchesOgmsModelFilters(model, {
+                search,
+                domain,
+                online,
+                publicOnly,
+                institutionalOnly
+            }));
+
+            const total = filteredModels.length;
+            const startIndex = (page - 1) * limit;
+
+            return res.json({
+                total,
+                page,
+                limit,
+                data: filteredModels.slice(startIndex, startIndex + limit)
+            });
+        }
 
         try {
             const payload = await fetchOgmsModelListPage(page, limit, search);
@@ -845,6 +1188,31 @@ app.get('/api/ogms/models', async (req, res) => {
     } catch (error) {
         console.error('Error listing models:', error.message);
         res.status(500).json({ error: 'Failed to list models' });
+    }
+});
+
+app.get('/api/ogms/models/facets', async (req, res) => {
+    try {
+        const search = (req.query.q || '').trim();
+        const online = String(req.query.online || 'false') === 'true';
+        const publicOnly = String(req.query.public || 'false') === 'true';
+        const institutionalOnly = String(req.query.institutional || 'false') === 'true';
+
+        const repository = await fetchOgmsModelRepository();
+        const scopedModels = repository.models.filter(model => matchesOgmsModelFilters(model, {
+            search,
+            online,
+            publicOnly,
+            institutionalOnly
+        }));
+
+        res.json({
+            total: scopedModels.length,
+            domains: buildOgmsDomainFacetCounts(scopedModels).slice(0, 8)
+        });
+    } catch (error) {
+        console.error('Error fetching OGMS model facets:', error.message);
+        res.status(500).json({ error: 'Failed to fetch model facets' });
     }
 });
 

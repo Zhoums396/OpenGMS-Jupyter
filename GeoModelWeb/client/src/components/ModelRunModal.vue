@@ -425,7 +425,8 @@ const pollTask = async (tid) => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(7, 16, 31, 0.58);
+  backdrop-filter: blur(10px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -433,26 +434,27 @@ const pollTask = async (tid) => {
 }
 
 .modal-content {
-  background: var(--card-bg);
+  background: rgba(255, 255, 255, 0.99);
   width: 90%;
   max-width: 800px;
   max-height: 90vh;
-  border-radius: 12px;
+  border-radius: 20px;
   display: flex;
   flex-direction: column;
   color: var(--text-primary);
-  box-shadow: var(--shadow-lg);
-  border: 1px solid var(--border-color);
+  box-shadow: 0 32px 80px rgba(0, 30, 64, 0.22);
+  border: 1px solid rgba(0, 30, 64, 0.08);
+  overflow: hidden;
 }
 
 .modal-header {
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--nav-bg);
-  border-radius: 12px 12px 0 0;
+  background: linear-gradient(135deg, var(--primary-strong), var(--primary-soft));
+  border-radius: 20px 20px 0 0;
 }
 
 .modal-header h3 {
@@ -481,6 +483,7 @@ const pollTask = async (tid) => {
   padding: 1.5rem;
   overflow-y: auto;
   flex: 1;
+  background: var(--surface-card);
 }
 
 .modal-footer {
@@ -489,16 +492,16 @@ const pollTask = async (tid) => {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-  background: var(--bg-color);
-  border-radius: 0 0 12px 12px;
+  background: #f5f7fb;
+  border-radius: 0 0 20px 20px;
 }
 
 .state-group {
   margin-bottom: 1.5rem;
   border: 1px solid var(--border-color);
   padding: 1rem;
-  border-radius: 8px;
-  background: var(--bg-color);
+  border-radius: 12px;
+  background: var(--surface-low);
 }
 
 .state-title {

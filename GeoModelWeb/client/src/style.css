@@ -1,41 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+
 :root {
-  /* Unified scientific theme */
-  --bg-color: #eef2f6;
-  --card-bg: #ffffff;
-  --text-primary: #182635;
-  --text-secondary: #4a5e73;
-  --text-muted: #77879a;
-  --accent-color: #2e618d;
-  --accent-hover: #244f75;
-  --accent-light: rgba(46, 97, 141, 0.12);
-  --border-color: #d4deea;
-  --border-light: #e6edf4;
+  --bg-color: #f8f9fa;
+  --surface: #f8f9fa;
+  --surface-low: #f3f4f5;
+  --surface-card: #ffffff;
+  --surface-high: #e7e8e9;
+  --surface-highest: #e1e3e4;
+  --text-primary: #001e40;
+  --text-secondary: #43474f;
+  --text-muted: #737780;
+  --accent-color: #006876;
+  --accent-hover: #00535e;
+  --accent-light: rgba(0, 104, 118, 0.12);
+  --accent-soft: #d5e3ff;
+  --primary-strong: #001e40;
+  --primary-soft: #003366;
+  --primary-rgb: 0, 30, 64;
   --success-color: #2f7d4e;
   --warning-color: #85682f;
   --danger-color: #a64949;
+  --border-color: rgba(195, 198, 209, 0.45);
+  --border-light: rgba(195, 198, 209, 0.2);
+  --nav-bg: rgba(248, 249, 250, 0.82);
+  --nav-text: #001e40;
+  --nav-text-secondary: rgba(0, 30, 64, 0.58);
+  --shadow-sm: 0 16px 32px rgba(25, 28, 29, 0.04);
+  --shadow-md: 0 24px 48px rgba(25, 28, 29, 0.06);
+  --shadow-lg: 0 36px 72px rgba(25, 28, 29, 0.08);
+  --max-shell-width: 1440px;
+}
 
-  --nav-bg: #0f1c2d;
-  --nav-text: #ffffff;
-  --nav-text-secondary: rgba(255, 255, 255, 0.7);
-
-  --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 6px 16px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 14px 28px rgba(15, 23, 42, 0.12);
-
-  --accent-rgb: 46, 97, 141;
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
-  font-family: 'Avenir Next', 'Source Han Sans SC', 'Noto Sans SC', 'PingFang SC', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: var(--bg-color);
+  font-family: 'Inter', 'Source Han Sans SC', 'Noto Sans SC', 'PingFang SC', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(213, 227, 255, 0.35), transparent 28%),
+    radial-gradient(circle at top right, rgba(158, 239, 255, 0.2), transparent 26%),
+    var(--bg-color);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 * {
   box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.font-headline {
+  font-family: 'Manrope', 'Inter', sans-serif;
+}
+
+.surface-panel {
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Scrollbar Styling - 浅色风格 */

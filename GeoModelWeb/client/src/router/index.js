@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import HomeView from '../views/HomeView.vue'
 import ModelView from '../views/ModelView.vue'
 import DataView from '../views/DataView.vue'
 import DataMethodView from '../views/DataMethodView.vue'
@@ -12,7 +13,8 @@ import CaseDetail from '../views/CaseDetail.vue'
 const routes = [
     {
         path: '/',
-        redirect: '/datamethod'
+        name: 'Home',
+        component: HomeView
     },
     {
         path: '/model',

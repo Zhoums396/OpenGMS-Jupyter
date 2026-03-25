@@ -1,29 +1,31 @@
 <template>
   <div class="app-container" :class="{ 'no-nav': hideMainNav }">
     <nav v-if="!hideMainNav" class="top-nav">
-      <div class="nav-left">
-        <img src="/logo.png" alt="OpenGeoLab" class="logo">
-      </div>
-      
-      <div class="nav-items">
-        <router-link to="/model" class="nav-item" active-class="active">
-          {{ $t('nav.model') }}
+      <div class="top-nav-shell">
+        <router-link to="/" class="nav-brand">
+          <img src="/logo.png" alt="OpenGeoLab" class="logo">
         </router-link>
-        <router-link to="/data" class="nav-item" active-class="active">
-          {{ $t('nav.data') }}
-        </router-link>
-        <router-link to="/datamethod" class="nav-item" active-class="active">
-          {{ $t('nav.dataMethod') }}
-        </router-link>
-      </div>
-      
-      <div class="nav-right">
-        <a href="/jupyter" class="jupyter-btn" target="_blank">
-          {{ $t('nav.jupyter') }}
-        </a>
-        <button class="lang-switcher" @click="toggleLocale" :title="locale === 'en' ? '切换到中文' : 'Switch to English'">
-          <span class="lang-icon">{{ locale === 'en' ? '中' : 'EN' }}</span>
-        </button>
+
+        <div class="nav-items">
+          <router-link to="/model" class="nav-item" active-class="active">
+            {{ $t('nav.model') }}
+          </router-link>
+          <router-link to="/data" class="nav-item" active-class="active">
+            {{ $t('nav.data') }}
+          </router-link>
+          <router-link to="/datamethod" class="nav-item" active-class="active">
+            {{ $t('nav.dataMethod') }}
+          </router-link>
+        </div>
+
+        <div class="nav-right">
+          <a href="/jupyter" class="workspace-link">
+            OpenGeoLab Jupyter
+          </a>
+          <button class="lang-switcher" @click="toggleLocale" :title="locale === 'en' ? '切换到中文' : 'Switch to English'">
+            <span class="lang-icon">{{ locale === 'en' ? '中' : 'EN' }}</span>
+          </button>
+        </div>
       </div>
     </nav>
     <main class="main-content" :class="{ 'full-height': hideMainNav }">
@@ -52,7 +54,7 @@ const toggleLocale = () => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-color);
+  background-color: transparent;
 }
 
 .app-container.no-nav {
@@ -60,146 +62,141 @@ const toggleLocale = () => {
 }
 
 .top-nav {
-  height: 64px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 2rem;
-  background-color: var(--nav-bg);
-  border-bottom: none;
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: var(--shadow-md);
+  padding: 0;
+  background: linear-gradient(180deg, rgba(7, 18, 31, 0.96), rgba(10, 34, 59, 0.94));
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.nav-left {
+.top-nav-shell {
+  max-width: var(--max-shell-width);
+  margin: 0 auto;
+  min-height: 78px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0 1.5rem;
+}
+
+.nav-brand {
   display: flex;
   align-items: center;
-  flex: 0 0 auto;
-  z-index: 2;
+  text-decoration: none;
 }
 
 .logo {
   height: 40px;
   width: auto;
-  cursor: pointer;
-  transition: transform 0.3s ease;
-}
-
-.logo:hover {
-  transform: scale(1.05);
 }
 
 .nav-items {
   display: flex;
-  gap: 0.5rem;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1;
+  justify-content: center;
+  gap: 1.25rem;
 }
 
 .nav-item {
-  color: var(--nav-text-secondary);
+  color: rgba(255, 255, 255, 0.76);
   text-decoration: none;
+  font-family: 'Manrope', sans-serif;
   font-size: 1rem;
-  font-weight: 500;
-  padding: 0.5rem 1.2rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
+  font-weight: 700;
+  padding: 1.25rem 0.15rem;
+  border-radius: 0;
+  transition: color 0.25s ease;
   position: relative;
 }
 
 .nav-item:hover {
-  color: var(--nav-text);
-  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
 }
 
 .nav-item.active {
-  color: var(--nav-text);
-  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
 }
 
 .nav-item.active::after {
   content: '';
   position: absolute;
-  bottom: -4px;
+  bottom: 2px;
   left: 50%;
   transform: translateX(-50%);
-  width: 24px;
+  width: 68px;
   height: 3px;
-  background-color: var(--accent-color);
-  border-radius: 2px;
+  background-color: rgba(158, 239, 255, 0.96);
+  border-radius: 999px;
 }
 
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  flex: 0 0 auto;
-  z-index: 2;
+  gap: 0.8rem;
 }
 
-/* My Jupyter 按钮样式 */
-.jupyter-btn {
+.workspace-link {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.52rem 1rem;
-  background-color: var(--accent-color);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 6px;
-  color: white;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 1.25rem;
+  background: linear-gradient(135deg, var(--primary-strong), var(--primary-soft));
+  border: none;
+  border-radius: 10px;
+  color: var(--surface-card);
   text-decoration: none;
-  font-weight: 600;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
   font-size: 0.9rem;
   letter-spacing: 0.01em;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-  box-shadow: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 18px 28px rgba(0, 30, 64, 0.16);
 }
 
-.jupyter-btn:hover {
-  background-color: var(--accent-hover);
-  border-color: rgba(255, 255, 255, 0.22);
-}
-
-.jupyter-btn.active {
-  background-color: var(--accent-hover);
-  border-color: rgba(255, 255, 255, 0.26);
+.workspace-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 22px 32px rgba(0, 30, 64, 0.18);
 }
 
 .lang-switcher {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
   background-color: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: var(--nav-text);
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-radius: 12px;
   cursor: pointer;
-  font-weight: 500;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
   font-size: 0.9rem;
-  transition: all 0.3s ease;
+  transition: background-color 0.25s ease, transform 0.25s ease;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
 }
 
 .lang-switcher:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
 }
 
 .lang-icon {
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
   font-size: 0.9rem;
+  line-height: 1;
 }
 
 .main-content {
   flex: 1;
-  padding: 2rem;
-  max-width: 1400px;
+  padding: 0;
   width: 100%;
-  margin: 0 auto;
 }
 
 .main-content.full-height {
@@ -207,5 +204,43 @@ const toggleLocale = () => {
   max-width: none;
   padding: 0;
   margin: 0;
+}
+
+@media (max-width: 960px) {
+  .top-nav-shell {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "brand actions"
+      "menu menu";
+    gap: 0.9rem;
+  }
+
+  .nav-brand {
+    grid-area: brand;
+  }
+
+  .nav-right {
+    grid-area: actions;
+    justify-content: flex-end;
+  }
+
+  .nav-items {
+    grid-area: menu;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .workspace-link {
+    padding: 0.68rem 0.92rem;
+    font-size: 0.82rem;
+  }
+
+  .nav-item {
+    padding: 0.6rem 0.9rem;
+    font-size: 0.88rem;
+  }
 }
 </style>

@@ -1,139 +1,128 @@
 <template>
-  <div class="data-view">
-    <div class="view-header">
-      <h1>{{ $t('dataView.title') }}</h1>
-      <p class="subtitle">{{ $t('dataView.subtitle') }}</p>
-      
-      <div class="search-container">
-        <input 
-          v-model="searchQuery" 
-          @keyup.enter="handleSearch"
-          type="text" 
-          :placeholder="$t('dataView.searchPlaceholder')"
-          class="search-input"
-        >
-        <button @click="handleSearch" class="search-btn">
-          {{ $t('dataView.search') }}
-        </button>
-      </div>
-    </div>
+  <div class="catalog-page">
+    <div class="catalog-shell">
+      <aside class="catalog-sidebar">
+        <h2 class="catalog-sidebar-title font-headline">Repository Filters</h2>
 
-    <!-- 分类筛选 -->
-    <div class="filter-section">
-      <div class="filter-label">{{ $t('dataView.categoryLabel') }}</div>
-      <div class="category-tags">
-        <button 
-          v-for="cat in localizedCategories" 
-          :key="cat.value"
-          :class="['category-btn', { active: selectedCategory === cat.value }]"
-          @click="selectCategory(cat.value)"
-        >
-          {{ cat.label }}
-        </button>
-      </div>
-    </div>
-
-    <!-- 排序选项 -->
-    <div class="sort-section">
-      <span class="sort-label">{{ $t('dataView.sortLabel') }}</span>
-      <select v-model="sortField" @change="handleSortChange" class="sort-select">
-        <option value="createTime">{{ $t('dataView.sortLatest') }}</option>
-        <option value="fileSize">{{ $t('dataView.sortSize') }}</option>
-        <option value="pageviews">{{ $t('dataView.sortViews') }}</option>
-      </select>
-      <button class="sort-order-btn" @click="toggleSortOrder" :title="sortAsc ? '↑' : '↓'">
-        {{ sortAsc ? '↑' : '↓' }}
-      </button>
-      <span class="total-count" v-if="total > 0">{{ $t('dataView.totalCount', { count: total }) }}</span>
-    </div>
-
-    <div v-if="loading && !dataList.length" class="loading-state">
-      <div class="spinner"></div>
-      <p>{{ $t('dataView.loading') }}</p>
-    </div>
-
-    <div v-else-if="!dataList.length" class="empty-state">
-      <div class="empty-icon"></div>
-      <p>{{ $t('dataView.noData') }}</p>
-      <p class="empty-hint">{{ $t('dataView.noDataHint') }}</p>
-    </div>
-
-    <div v-else class="content-wrapper">
-      <div class="data-grid">
-        <DataCard 
-          v-for="item in dataList" 
-          :key="item.id" 
-          :data="item" 
-          @view="handleView"
-          @download="handleDownload"
-        />
-      </div>
-
-      <div class="pagination" v-if="totalPages > 1">
-        <button 
-          class="page-btn" 
-          :disabled="currentPage === 1" 
-          @click="changePage(1)"
-          :title="$t('dataView.firstPage')"
-        >
-          «
-        </button>
-        <button 
-          class="page-btn" 
-          :disabled="currentPage === 1" 
-          @click="changePage(currentPage - 1)"
-        >
-          &lt; {{ $t('dataView.previous') }}
-        </button>
-        
-        <div class="page-numbers">
-          <button 
-            v-for="page in visiblePages" 
-            :key="page"
-            :class="['page-num', { active: page === currentPage }]"
-            @click="changePage(page)"
+        <div class="catalog-filter-block category-list">
+          <button
+            v-for="cat in localizedCategories"
+            :key="cat.value"
+            :class="['catalog-filter-item', { active: selectedCategory === cat.value }]"
+            @click="selectCategory(cat.value)"
           >
-            {{ page }}
+            <span v-if="selectedCategory === cat.value" class="catalog-filter-indicator"></span>
+            <span>{{ cat.label }}</span>
           </button>
         </div>
-        
-        <button 
-          class="page-btn" 
-          :disabled="currentPage === totalPages" 
-          @click="changePage(currentPage + 1)"
-        >
-          {{ $t('dataView.next') }} &gt;
-        </button>
-        <button 
-          class="page-btn" 
-          :disabled="currentPage === totalPages" 
-          @click="changePage(totalPages)"
-          :title="$t('dataView.lastPage')"
-        >
-          »
-        </button>
-        
-        <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
-      </div>
+
+        <div class="catalog-status-block">
+          <p class="catalog-label">{{ $t('dataView.sortLabel') }}</p>
+
+          <select v-model="sortField" @change="handleSortChange" class="catalog-select">
+            <option value="createTime">{{ $t('dataView.sortLatest') }}</option>
+            <option value="fileSize">{{ $t('dataView.sortSize') }}</option>
+            <option value="pageviews">{{ $t('dataView.sortViews') }}</option>
+          </select>
+
+          <button class="catalog-order-btn" @click="toggleSortOrder">
+            {{ sortAsc ? 'Ascending' : 'Descending' }}
+          </button>
+        </div>
+
+        <div class="catalog-callout">
+          <span class="catalog-callout-icon">◫</span>
+          <h3 class="font-headline">Need project-ready data assets?</h3>
+          <p>Fork datasets into your own workspace, stage uploads, and connect them directly to notebooks.</p>
+          <button type="button" @click="$router.push('/jupyter')">Open Workspace</button>
+        </div>
+      </aside>
+
+      <section class="catalog-main">
+        <header class="catalog-header">
+          <div class="catalog-header-copy">
+            <h1 class="font-headline">{{ $t('dataView.title') }}</h1>
+            <p>{{ $t('dataView.subtitle') }}</p>
+          </div>
+
+          <div class="catalog-search">
+            <span class="catalog-search-icon">⌕</span>
+            <input
+              v-model="searchQuery"
+              @keyup.enter="handleSearch"
+              type="text"
+              :placeholder="$t('dataView.searchPlaceholder')"
+            >
+          </div>
+        </header>
+
+        <div v-if="loading && !dataList.length" class="catalog-loading">
+          <div class="spinner"></div>
+          <p>{{ $t('dataView.loading') }}</p>
+        </div>
+
+        <div v-else-if="!dataList.length" class="catalog-empty">
+          <p>{{ $t('dataView.noData') }}</p>
+          <span>{{ $t('dataView.noDataHint') }}</span>
+        </div>
+
+        <div v-else class="catalog-list">
+          <DataCard
+            v-for="item in dataList"
+            :key="item.id"
+            :data="item"
+            @view="handleView"
+            @download="handleDownload"
+          />
+        </div>
+
+        <div class="catalog-pagination" v-if="totalPages > 1">
+          <button
+            class="catalog-page-btn"
+            :disabled="currentPage === 1"
+            @click="changePage(currentPage - 1)"
+          >
+            ‹
+          </button>
+
+          <span class="catalog-page-current">{{ currentPage }}</span>
+          <span class="catalog-page-total">/ {{ totalPages }}</span>
+
+          <button
+            class="catalog-page-btn"
+            :disabled="currentPage === totalPages"
+            @click="changePage(currentPage + 1)"
+          >
+            ›
+          </button>
+        </div>
+      </section>
     </div>
+
+    <footer class="catalog-footer">
+      <div class="catalog-footer-shell">
+        <p class="catalog-footer-brand font-headline">OpenGeoLab</p>
+        <div class="catalog-footer-links">
+          <a href="#">Institutional Repository</a>
+          <a href="#">Data Governance</a>
+          <a href="#">API Documentation</a>
+          <a href="#">Privacy Policy</a>
+        </div>
+      </div>
+    </footer>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import DataCard from '../components/DataCard.vue'
 
 const { t } = useI18n()
 
-// 使用本地后端代理，避免 CORS 问题
-const API_BASE = ''  // 通过 Vite 代理或直接使用后端
-
-// 数据中心下载地址
 const DOWNLOAD_BASE = 'https://geomodeling.njnu.edu.cn/OpenGMPBack'
 
-// 分类映射（API 使用中文值）
 const categoryKeys = [
   { key: 'all', value: '' },
   { key: 'basicGeo', value: '基础地理' },
@@ -154,7 +143,6 @@ const categoryKeys = [
   { key: 'other', value: '其他数据' }
 ]
 
-// 本地化后的分类
 const localizedCategories = computed(() => {
   return categoryKeys.map(cat => ({
     label: t(`dataView.categories.${cat.key}`),
@@ -173,44 +161,21 @@ const total = ref(0)
 const totalPages = ref(0)
 const pageSize = 18
 
-// 计算可见页码
-const visiblePages = computed(() => {
-  const pages = []
-  const totalP = totalPages.value
-  const current = currentPage.value
-  
-  if (totalP <= 7) {
-    for (let i = 1; i <= totalP; i++) pages.push(i)
-  } else {
-    if (current <= 4) {
-      pages.push(1, 2, 3, 4, 5, 6, 7)
-    } else if (current >= totalP - 3) {
-      for (let i = totalP - 6; i <= totalP; i++) pages.push(i)
-    } else {
-      for (let i = current - 3; i <= current + 3; i++) pages.push(i)
-    }
-  }
-  
-  return pages.filter(p => p >= 1 && p <= totalP)
-})
-
-// 获取数据列表
 const fetchData = async (page = 1) => {
   loading.value = true
   try {
     const params = {
       asc: sortAsc.value,
-      page: page,
-      pageSize: pageSize,
+      page,
+      pageSize,
       searchText: searchQuery.value,
       sortField: sortField.value,
       tagClass: 'problemTags',
       tagName: selectedCategory.value
     }
-    
-    // 使用后端代理接口
+
     const response = await axios.post('/api/datacenter/list', params)
-    
+
     if (response.data.code === 0 && response.data.data) {
       dataList.value = response.data.data.content || []
       total.value = response.data.data.totalElements || 0
@@ -257,17 +222,16 @@ const changePage = (page) => {
 }
 
 const handleView = (data) => {
-  // 可以打开详情模态框或跳转到详情页
   console.log('View data:', data)
 }
 
 const handleDownload = (data) => {
   if (data.id) {
-    // 使用原始下载地址（下载不需要代理，直接跳转即可）
     window.open(`${DOWNLOAD_BASE}/userRes/downloadDataItem/${data.id}`, '_blank')
-  } else {
-    alert('下载链接不可用')
+    return
   }
+
+  alert('下载链接不可用')
 }
 
 onMounted(() => {
@@ -276,329 +240,352 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.data-view {
-  padding: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
-  animation: fadeIn 0.5s ease;
+.catalog-page {
+  padding: 2.5rem 2rem 4rem;
+  background: #f8f9fa;
 }
 
-.view-header {
-  text-align: center;
-  margin-bottom: 2rem;
-  padding: 2rem 2rem 1.5rem;
-  background: transparent;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.view-header h1 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-  color: var(--text-primary);
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
-.subtitle {
-  color: #606266;
-  font-size: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.search-container {
-  display: flex;
-  gap: 0.75rem;
-  max-width: 600px;
+.catalog-shell,
+.catalog-footer-shell {
+  max-width: 1560px;
   margin: 0 auto;
 }
 
-.search-input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  background: white;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-size: 0.95rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+.catalog-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 3rem;
+  align-items: start;
 }
 
-.search-input:focus {
-  outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 3px var(--accent-light);
+.catalog-sidebar {
+  padding-top: 0.5rem;
 }
 
-.search-btn {
-  padding: 0 1.5rem;
-  background: var(--accent-color);
-  border: 1px solid transparent;
-  border-radius: 6px;
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
+.catalog-sidebar-title,
+.catalog-footer-brand {
+  margin: 0;
+  color: var(--primary-strong);
 }
 
-.search-btn:hover {
-  background: var(--accent-hover);
+.catalog-sidebar-title {
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-/* 分类筛选 */
-.filter-section {
-  margin-bottom: 1.5rem;
-  padding: 1rem 1.25rem;
-  background: var(--card-bg);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
+.catalog-filter-block,
+.catalog-status-block {
+  margin-top: 1.75rem;
 }
 
-.filter-label {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
-  font-weight: 500;
+.category-list {
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 0.25rem;
 }
 
-.category-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.category-btn {
-  padding: 6px 14px;
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.category-btn:hover {
-  background: var(--accent-light);
-  color: var(--accent-color);
-  border-color: var(--accent-color);
-}
-
-.category-btn.active {
-  background: var(--accent-light);
-  border-color: var(--accent-color);
-  color: var(--accent-color);
-  font-weight: 500;
-}
-
-/* 排序选项 */
-.sort-section {
+.catalog-filter-item {
+  position: relative;
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 1.5rem;
-  padding: 12px 16px;
-  background: var(--card-bg);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
-}
-
-.sort-label {
-  font-size: 0.9rem;
+  justify-content: space-between;
+  min-height: 52px;
+  margin-bottom: 0.3rem;
+  padding: 0 1rem 0 1.15rem;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
   color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.sort-select {
-  padding: 6px 12px;
-  background: white;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-size: 0.85rem;
+  font: inherit;
   cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.sort-select:focus {
-  outline: none;
-  border-color: var(--accent-color);
+.catalog-filter-item:hover {
+  background: rgba(243, 244, 245, 0.98);
+  color: var(--primary-strong);
 }
 
-.sort-order-btn {
-  width: 32px;
-  height: 32px;
-  background: white;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-secondary);
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
+.catalog-filter-item.active {
+  background: rgba(225, 227, 228, 0.95);
+  color: var(--primary-strong);
+  font-weight: 700;
 }
 
-.sort-order-btn:hover {
-  background: var(--accent-light);
-  color: var(--accent-color);
-  border-color: var(--accent-color);
+.catalog-filter-indicator {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 4px;
+  height: 24px;
+  border-radius: 0 4px 4px 0;
+  background: var(--accent-color);
+  transform: translateY(-50%);
 }
 
-.total-count {
-  margin-left: auto;
-  font-size: 0.9rem;
+.catalog-label {
+  margin: 0 0 1rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 800;
   color: var(--text-muted);
 }
 
-/* 数据网格 */
-.data-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 2rem;
+.catalog-select,
+.catalog-order-btn {
+  width: 100%;
+  min-height: 48px;
+  border: none;
+  border-radius: 12px;
+  font: inherit;
 }
 
-/* 加载状态 */
-.loading-state {
-  text-align: center;
-  padding: 4rem;
-  color: var(--text-secondary);
-  background: var(--card-bg);
+.catalog-select {
+  padding: 0 0.95rem;
+  background: rgba(243, 244, 245, 0.96);
+  color: var(--primary-strong);
+}
+
+.catalog-order-btn {
+  margin-top: 0.8rem;
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent-color);
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.catalog-callout {
+  margin-top: 2rem;
+  padding: 1.6rem;
+  border-radius: 18px;
+  background: linear-gradient(150deg, #0a2129, #123248);
+  color: white;
+}
+
+.catalog-callout-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
   border-radius: 12px;
-  box-shadow: var(--shadow-sm);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.catalog-callout h3 {
+  margin: 1rem 0 0;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.catalog-callout p {
+  margin: 0.9rem 0 0;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.catalog-callout button {
+  min-height: 46px;
+  margin-top: 1.2rem;
+  padding: 0 1.2rem;
+  border: none;
+  border-radius: 8px;
+  background: rgba(17, 182, 205, 0.92);
+  color: white;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.catalog-main {
+  min-width: 0;
+}
+
+.catalog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 2rem;
+  padding-top: 0.75rem;
+}
+
+.catalog-header-copy h1 {
+  margin: 0;
+  font-size: clamp(2.7rem, 4vw, 3.75rem);
+  line-height: 0.97;
+  letter-spacing: -0.045em;
+  color: var(--primary-strong);
+}
+
+.catalog-header-copy p {
+  max-width: 780px;
+  margin: 1rem 0 0;
+  font-size: 1.06rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.catalog-search {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.8rem;
+  width: 380px;
+  min-height: 56px;
+  padding: 0 1rem;
+  border-radius: 12px;
+  background: rgba(243, 244, 245, 0.96);
+  box-shadow: inset 0 -2px 0 transparent;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.catalog-search:focus-within {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: inset 0 -2px 0 var(--accent-color);
+}
+
+.catalog-search-icon {
+  color: var(--text-muted);
+}
+
+.catalog-search input {
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: var(--primary-strong);
+  outline: none;
+}
+
+.catalog-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.catalog-loading,
+.catalog-empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  padding: 3rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.05);
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid var(--border-color);
+  border: 4px solid rgba(0, 104, 118, 0.15);
   border-top-color: var(--accent-color);
-  border-radius: 50%;
+  border-radius: 999px;
   animation: spin 1s linear infinite;
-  margin: 0 auto 1rem;
-}
-
-/* 空状态 */
-.empty-state {
-  text-align: center;
-  padding: 4rem;
-  color: var(--text-secondary);
-  background: var(--card-bg);
-  border-radius: 12px;
-  box-shadow: var(--shadow-sm);
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-}
-
-.empty-hint {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  margin-top: 8px;
-}
-
-/* 分页 */
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  margin-top: 2rem;
-  padding: 1rem;
-  background: var(--card-bg);
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
-  flex-wrap: wrap;
-}
-
-.page-btn {
-  padding: 8px 14px;
-  background: white;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 0.85rem;
-  transition: all 0.2s;
-}
-
-.page-btn:hover:not(:disabled) {
-  border-color: var(--accent-color);
-  color: var(--accent-color);
-}
-
-.page-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  background: var(--bg-color);
-}
-
-.page-numbers {
-  display: flex;
-  gap: 4px;
-}
-
-.page-num {
-  width: 36px;
-  height: 36px;
-  background: white;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.page-num:hover {
-  border-color: var(--accent-color);
-  color: var(--accent-color);
-}
-
-.page-num.active {
-  background: var(--accent-color);
-  border-color: var(--accent-color);
-  color: white;
-}
-
-.page-info {
-  margin-left: 12px;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* 响应式 */
-@media (max-width: 768px) {
-  .data-view {
-    padding: 1rem;
+.catalog-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.catalog-page-btn,
+.catalog-page-current {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: none;
+  font: inherit;
+}
+
+.catalog-page-btn {
+  background: rgba(243, 244, 245, 0.98);
+  color: var(--primary-strong);
+  cursor: pointer;
+}
+
+.catalog-page-current {
+  background: linear-gradient(135deg, var(--primary-strong), var(--primary-soft));
+  color: white;
+  font-weight: 800;
+}
+
+.catalog-page-total {
+  color: var(--text-secondary);
+}
+
+.catalog-footer {
+  margin-top: 4rem;
+}
+
+.catalog-footer-shell {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(195, 198, 209, 0.35);
+}
+
+.catalog-footer-brand {
+  font-size: 1.6rem;
+}
+
+.catalog-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 1rem 2rem;
+}
+
+.catalog-footer-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+@media (max-width: 1080px) {
+  .catalog-shell {
+    grid-template-columns: 1fr;
   }
-  
-  .view-header h1 {
-    font-size: 1.8rem;
+
+  .catalog-header {
+    flex-direction: column;
+    align-items: stretch;
   }
-  
-  .search-container {
+
+  .catalog-search {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .catalog-page {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .catalog-footer-shell {
     flex-direction: column;
   }
-  
-  .category-tags {
-    justify-content: center;
+
+  .catalog-footer-links {
+    justify-content: flex-start;
   }
-  
-  .sort-section {
-    flex-wrap: wrap;
-  }
-  
 }
 </style>

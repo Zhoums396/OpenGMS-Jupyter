@@ -1,103 +1,135 @@
 <template>
-  <div class="datamethod-view">
-    <div class="view-header">
-      <h1>{{ $t('dataMethodView.title') }}</h1>
-      <p class="subtitle">{{ $t('dataMethodView.subtitle') }}</p>
-      
-      <div class="search-container">
-        <input 
-          v-model="searchQuery" 
-          @keyup.enter="handleSearch"
-          type="text" 
-          :placeholder="$t('dataMethodView.searchPlaceholder')"
-          class="search-input"
-          :disabled="loading"
-        >
-        <button @click="handleSearch" class="search-btn" :disabled="loading">
-          {{ $t('dataMethodView.search') }}
-        </button>
-      </div>
-    </div>
+  <div class="catalog-page">
+    <div class="catalog-shell">
+      <aside class="catalog-sidebar">
+        <h2 class="catalog-sidebar-title font-headline">Repository Filters</h2>
 
-    <div class="content-wrapper">
-      <!-- 搜索提示 -->
-      <div v-if="searchNote && !loading" class="search-note">
-        {{ searchNote }}
-      </div>
-      
-      <!-- 搜索结果统计 -->
-      <div v-if="searchQuery && total > 0 && !loading" class="search-stats">
-        找到 {{ total }} 个匹配的数据方法
-      </div>
-      
-      <div v-if="loading" class="model-grid skeleton-grid" aria-live="polite" aria-busy="true">
-        <div
-          v-for="item in skeletonItems"
-          :key="item"
-          class="skeleton-card"
-        >
-          <div class="skeleton skeleton-visual"></div>
-          <div class="skeleton-content">
-            <div class="skeleton-header">
-              <div class="skeleton skeleton-title"></div>
-              <div class="skeleton skeleton-badge"></div>
-            </div>
-            <div class="skeleton-body">
-              <div class="skeleton skeleton-line long"></div>
-              <div class="skeleton skeleton-line"></div>
-              <div class="skeleton-tag-row">
-                <div class="skeleton skeleton-tag"></div>
-                <div class="skeleton skeleton-tag short"></div>
-              </div>
-            </div>
+        <div class="catalog-filter-block">
+          <button
+            :class="['catalog-filter-item', { active: activeFacet === 'all' }]"
+            @click="selectFacet('all')"
+          >
+            <span v-if="activeFacet === 'all'" class="catalog-filter-indicator"></span>
+            <span>All Methods</span>
+            <strong>{{ facetTotal || total || 0 }}</strong>
+          </button>
+
+          <button
+            v-for="option in methodFacets"
+            :key="option.label"
+            :class="['catalog-filter-item', { active: activeFacet === option.label }]"
+            @click="selectFacet(option.label)"
+          >
+            <span v-if="activeFacet === option.label" class="catalog-filter-indicator"></span>
+            <span>{{ option.label }}</span>
+            <strong>{{ option.count }}</strong>
+          </button>
+        </div>
+
+        <div class="catalog-status-block">
+          <p class="catalog-label">Execution</p>
+          <label class="catalog-check">
+            <input v-model="preferInteractive" type="checkbox">
+            <span>Interactive Ready</span>
+          </label>
+          <label class="catalog-check">
+            <input v-model="preferPython" type="checkbox">
+            <span>Python Based</span>
+          </label>
+        </div>
+
+        <div class="catalog-callout">
+          <span class="catalog-callout-icon">⚗</span>
+          <h3 class="font-headline">Need a workflow-specific method?</h3>
+          <p>Package reusable preprocessing logic and make it executable inside OpenGeoLab-Jupyter.</p>
+          <button type="button">Publish Method</button>
+        </div>
+      </aside>
+
+      <section class="catalog-main">
+        <header class="catalog-header">
+          <div class="catalog-header-copy">
+            <h1 class="font-headline">{{ $t('dataMethodView.title') }}</h1>
+            <p>{{ $t('dataMethodView.subtitle') }}</p>
           </div>
-          <div class="skeleton-side">
-            <div class="skeleton skeleton-metric"></div>
-            <div class="skeleton skeleton-metric"></div>
-            <div class="skeleton skeleton-metric"></div>
-            <div class="skeleton skeleton-button"></div>
+
+          <div class="catalog-search">
+            <span class="catalog-search-icon">⌕</span>
+            <input
+              v-model="searchQuery"
+              @keyup.enter="handleSearch"
+              type="text"
+              :placeholder="$t('dataMethodView.searchPlaceholder')"
+              :disabled="loading"
+            >
+          </div>
+        </header>
+
+        <div v-if="searchNote && !loading" class="catalog-note">
+          {{ searchNote }}
+        </div>
+
+        <div v-if="loading" class="catalog-loading">
+          <div class="spinner"></div>
+          <p>Loading data methods...</p>
+        </div>
+
+        <div v-else class="catalog-list">
+          <DataMethodCard
+            v-for="method in dataMethods"
+            :key="method.id"
+            :method="method"
+            @run="openRunModal"
+          />
+
+          <div v-if="!dataMethods.length" class="catalog-empty">
+            <p>No methods match the current filters.</p>
           </div>
         </div>
-      </div>
 
-      <div v-else class="model-grid">
-        <DataMethodCard
-          v-for="method in dataMethods" 
-          :key="method.id" 
-          :method="method"
-          @run="openRunModal"
-        />
-      </div>
+        <div class="catalog-pagination" v-if="totalPages > 1">
+          <button
+            class="catalog-page-btn"
+            :disabled="loading || currentPage === 1"
+            @click="changePage(currentPage - 1)"
+          >
+            ‹
+          </button>
 
-      <div class="pagination">
-        <button 
-          class="page-btn" 
-          :disabled="loading || currentPage === 1" 
-          @click="changePage(currentPage - 1)"
-        >
-          &lt; {{ $t('dataMethodView.previous') }}
-        </button>
-        
-        <span class="page-info">{{ $t('dataMethodView.pageOf', { current: currentPage, total: totalPages }) }}</span>
-        
-        <button 
-          class="page-btn" 
-          :disabled="loading || currentPage === totalPages" 
-          @click="changePage(currentPage + 1)"
-        >
-          {{ $t('dataMethodView.next') }} &gt;
-        </button>
-      </div>
+          <span class="catalog-page-current">{{ currentPage }}</span>
+          <span class="catalog-page-total">/ {{ totalPages }}</span>
+
+          <button
+            class="catalog-page-btn"
+            :disabled="loading || currentPage === totalPages"
+            @click="changePage(currentPage + 1)"
+          >
+            ›
+          </button>
+        </div>
+      </section>
     </div>
 
-    <RunModal 
-      :visible="showModal" 
-      :model="selectedMethod" 
+    <footer class="catalog-footer">
+      <div class="catalog-footer-shell">
+        <p class="catalog-footer-brand font-headline">OpenGeoLab</p>
+        <div class="catalog-footer-links">
+          <a href="#">Institutional Repository</a>
+          <a href="#">Method Registry</a>
+          <a href="#">API Documentation</a>
+          <a href="#">Privacy Policy</a>
+        </div>
+      </div>
+    </footer>
+
+    <RunModal
+      :visible="showModal"
+      :model="selectedMethod"
       :loading="executing"
       @close="closeModal"
       @execute="executeMethod"
     />
-    
+
     <ResultModal
       :visible="showResultModal"
       :result="executionResult"
@@ -108,7 +140,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import DataMethodCard from '../components/DataMethodCard.vue'
 import RunModal from '../components/RunModal.vue'
@@ -121,6 +153,12 @@ const currentPage = ref(1)
 const total = ref(0)
 const searchNote = ref('')
 const limit = 12
+const facetTotal = ref(0)
+const methodFacets = ref([])
+
+const activeFacet = ref('all')
+const preferInteractive = ref(false)
+const preferPython = ref(false)
 
 const showModal = ref(false)
 const selectedMethod = ref(null)
@@ -129,13 +167,21 @@ const showResultModal = ref(false)
 const executionResult = ref(null)
 
 const totalPages = computed(() => Math.ceil(total.value / limit))
-const skeletonItems = computed(() => Array.from({ length: limit }, (_, index) => index))
 
 const fetchDataMethods = async (page = 1) => {
   loading.value = true
   searchNote.value = ''
   try {
-    const response = await axios.get(`/api/datamethods?page=${page}&limit=${limit}&q=${searchQuery.value}`)
+    const response = await axios.get('/api/datamethods', {
+      params: {
+        page,
+        limit,
+        q: searchQuery.value,
+        facet: activeFacet.value,
+        interactive: preferInteractive.value,
+        python: preferPython.value
+      }
+    })
     dataMethods.value = response.data.data
     total.value = response.data.total
     currentPage.value = response.data.page
@@ -147,9 +193,34 @@ const fetchDataMethods = async (page = 1) => {
   }
 }
 
+const fetchMethodFacets = async () => {
+  try {
+    const response = await axios.get('/api/datamethods/facets', {
+      params: {
+        q: searchQuery.value,
+        interactive: preferInteractive.value,
+        python: preferPython.value
+      }
+    })
+    facetTotal.value = response.data.total || 0
+    methodFacets.value = Array.isArray(response.data.facets) ? response.data.facets : []
+  } catch (error) {
+    console.error('Failed to fetch data method facets:', error)
+    facetTotal.value = total.value
+    methodFacets.value = []
+  }
+}
+
 const handleSearch = () => {
   currentPage.value = 1
+  fetchMethodFacets()
   fetchDataMethods()
+}
+
+const selectFacet = (facet) => {
+  activeFacet.value = facet
+  currentPage.value = 1
+  fetchDataMethods(1)
 }
 
 const changePage = (page) => {
@@ -181,7 +252,7 @@ const executeMethod = async (payload) => {
       modelId: selectedMethod.value.id,
       inputs: payload
     })
-    
+
     executionResult.value = response.data
     closeModal()
     showResultModal.value = true
@@ -198,284 +269,368 @@ const executeMethod = async (payload) => {
 }
 
 onMounted(() => {
+  fetchMethodFacets()
   fetchDataMethods()
+})
+
+watch([preferInteractive, preferPython], () => {
+  currentPage.value = 1
+  fetchMethodFacets()
+  fetchDataMethods(1)
 })
 </script>
 
 <style scoped>
-.datamethod-view {
-  padding: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
-  animation: fadeIn 0.5s ease;
+.catalog-page {
+  padding: 2.5rem 2rem 4rem;
+  background: #f8f9fa;
 }
 
-.view-header {
-  text-align: center;
-  margin-bottom: 2.5rem;
-  padding: 2rem 2rem 1.5rem;
-  background: transparent;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.view-header h1 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-  color: var(--text-primary);
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
-.subtitle {
-  color: #606266;
-  font-size: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.search-container {
-  display: flex;
-  gap: 0.75rem;
-  max-width: 600px;
+.catalog-shell,
+.catalog-footer-shell {
+  max-width: 1560px;
   margin: 0 auto;
 }
 
-.search-input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  background: white;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-size: 0.95rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 3px var(--accent-light);
-}
-
-.search-btn {
-  padding: 0 1.5rem;
-  background: var(--accent-color);
-  border: 1px solid transparent;
-  border-radius: 6px;
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.search-btn:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.search-btn:disabled,
-.search-input:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.model-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.skeleton-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 18px;
-  padding: 1.25rem 1.35rem;
+.catalog-shell {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) 230px;
-  gap: 1.25rem;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 3rem;
   align-items: start;
-  box-shadow: var(--shadow-sm);
 }
 
-.skeleton-content {
-  min-width: 0;
+.catalog-sidebar {
+  padding-top: 0.5rem;
 }
 
-.skeleton-header {
+.catalog-sidebar-title,
+.catalog-footer-brand {
+  margin: 0;
+  color: var(--primary-strong);
+}
+
+.catalog-sidebar-title {
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.catalog-filter-block,
+.catalog-status-block {
+  margin-top: 1.75rem;
+}
+
+.catalog-filter-item {
+  position: relative;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-}
-
-.skeleton-body {
-  padding-top: 1rem;
-}
-
-.skeleton-side {
-  display: grid;
-  gap: 0.7rem;
-}
-
-.skeleton {
-  position: relative;
-  overflow: hidden;
-  background: #e8edf5;
-  border-radius: 999px;
-}
-
-.skeleton::after {
-  content: none;
-}
-
-.skeleton {
-  animation: skeletonPulse 1.1s ease-in-out infinite alternate;
-}
-
-.skeleton-visual {
-  width: 92px;
-  height: 92px;
-  border-radius: 22px;
-}
-
-.skeleton-title {
-  width: 52%;
-  height: 30px;
-  border-radius: 10px;
-}
-
-.skeleton-badge {
-  width: 92px;
-  height: 22px;
-}
-
-.skeleton-line {
-  height: 14px;
-  margin-bottom: 0.75rem;
-  border-radius: 8px;
-}
-
-.skeleton-line.long {
-  width: 92%;
-}
-
-.skeleton-line:not(.long) {
-  width: 78%;
-}
-
-.skeleton-tag-row {
-  display: flex;
-  gap: 0.6rem;
-  margin-top: 1rem;
-}
-
-.skeleton-tag {
-  width: 110px;
-  height: 28px;
-  border-radius: 8px;
-}
-
-.skeleton-tag.short {
-  width: 84px;
-}
-
-.skeleton-metric {
-  width: 100%;
-  height: 52px;
-  border-radius: 14px;
-}
-
-.skeleton-button {
-  width: 100%;
-  height: 48px;
+  min-height: 52px;
+  margin-bottom: 0.3rem;
+  padding: 0 1rem 0 1.15rem;
+  border: none;
   border-radius: 12px;
-}
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 2rem;
-  padding: 1rem;
-  background: var(--card-bg);
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
-}
-
-.page-btn {
-  background-color: white;
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
   cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.9rem;
+  text-align: left;
+  overflow: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.page-btn:hover:not(:disabled) {
-  border-color: var(--accent-color);
-  color: var(--accent-color);
+.catalog-filter-item:hover {
+  background: rgba(243, 244, 245, 0.98);
+  color: var(--primary-strong);
 }
 
-.page-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background: var(--bg-color);
+.catalog-filter-item.active {
+  background: rgba(225, 227, 228, 0.95);
+  color: var(--primary-strong);
+  font-weight: 700;
 }
 
-.page-info {
+.catalog-filter-indicator {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 4px;
+  height: 24px;
+  border-radius: 0 4px 4px 0;
+  background: var(--accent-color);
+  transform: translateY(-50%);
+}
+
+.catalog-filter-item strong {
+  min-width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(0, 30, 64, 0.94);
+  color: white;
+  font-size: 0.84rem;
+}
+
+.catalog-label {
+  margin: 0 0 1rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.catalog-check {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
   color: var(--text-secondary);
-  font-size: 0.9rem;
 }
 
-.search-note {
-  background: rgba(230, 162, 60, 0.1);
-  border: 1px solid rgba(230, 162, 60, 0.3);
-  color: var(--warning-color);
-  padding: 0.75rem 1rem;
+.catalog-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-color);
+}
+
+.catalog-callout {
+  margin-top: 2rem;
+  padding: 1.6rem;
+  border-radius: 18px;
+  background: linear-gradient(150deg, #0a2129, #123248);
+  color: white;
+}
+
+.catalog-callout-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.catalog-callout h3 {
+  margin: 1rem 0 0;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.catalog-callout p {
+  margin: 0.9rem 0 0;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.catalog-callout button {
+  min-height: 46px;
+  margin-top: 1.2rem;
+  padding: 0 1.2rem;
+  border: none;
   border-radius: 8px;
-  margin-bottom: 1.5rem;
-  text-align: center;
-  font-size: 0.9rem;
+  background: rgba(17, 182, 205, 0.92);
+  color: white;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  cursor: pointer;
 }
 
-.search-stats {
+.catalog-main {
+  min-width: 0;
+}
+
+.catalog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 2rem;
+  padding-top: 0.75rem;
+}
+
+.catalog-header-copy h1 {
+  margin: 0;
+  font-size: clamp(2.7rem, 4vw, 3.75rem);
+  line-height: 0.97;
+  letter-spacing: -0.045em;
+  color: var(--primary-strong);
+}
+
+.catalog-header-copy p {
+  max-width: 780px;
+  margin: 1rem 0 0;
+  font-size: 1.06rem;
+  line-height: 1.65;
   color: var(--text-secondary);
-  margin-bottom: 1rem;
-  text-align: center;
-  font-size: 0.95rem;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.catalog-search {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.8rem;
+  width: 380px;
+  min-height: 56px;
+  padding: 0 1rem;
+  border-radius: 12px;
+  background: rgba(243, 244, 245, 0.96);
+  box-shadow: inset 0 -2px 0 transparent;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-@keyframes skeletonPulse {
-  from { opacity: 0.62; }
-  to { opacity: 1; }
+.catalog-search:focus-within {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: inset 0 -2px 0 var(--accent-color);
+}
+
+.catalog-search-icon {
+  color: var(--text-muted);
+}
+
+.catalog-search input {
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: var(--primary-strong);
+  outline: none;
+}
+
+.catalog-note {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text-secondary);
+}
+
+.catalog-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.4rem;
+}
+
+.catalog-loading,
+.catalog-empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  padding: 3rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.05);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 104, 118, 0.15);
+  border-top-color: var(--accent-color);
+  border-radius: 999px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.catalog-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.catalog-page-btn,
+.catalog-page-current {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: none;
+  font: inherit;
+}
+
+.catalog-page-btn {
+  background: rgba(243, 244, 245, 0.95);
+  color: var(--primary-strong);
+  cursor: pointer;
+}
+
+.catalog-page-current {
+  background: linear-gradient(135deg, var(--primary-strong), var(--primary-soft));
+  color: white;
+  font-weight: 800;
+}
+
+.catalog-page-total {
+  color: var(--text-secondary);
+}
+
+.catalog-footer {
+  margin-top: 4rem;
+}
+
+.catalog-footer-shell {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(195, 198, 209, 0.35);
+}
+
+.catalog-footer-brand {
+  font-size: 1.6rem;
+}
+
+.catalog-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 1rem 2rem;
+}
+
+.catalog-footer-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
 }
 
 @media (max-width: 1080px) {
-  .skeleton-card {
-    grid-template-columns: 96px minmax(0, 1fr);
+  .catalog-shell {
+    grid-template-columns: 1fr;
   }
 
-  .skeleton-side {
-    grid-column: 1 / -1;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .catalog-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .catalog-search {
+    width: 100%;
   }
 }
 
 @media (max-width: 720px) {
-  .skeleton-card {
-    grid-template-columns: 1fr;
+  .catalog-page {
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 
-  .skeleton-side {
-    grid-template-columns: 1fr;
+  .catalog-footer-shell {
+    flex-direction: column;
+  }
+
+  .catalog-footer-links {
+    justify-content: flex-start;
   }
 }
 </style>

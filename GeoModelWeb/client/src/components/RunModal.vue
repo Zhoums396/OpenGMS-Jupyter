@@ -260,8 +260,8 @@ const handleExecute = () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  background: rgba(7, 16, 31, 0.58);
+  backdrop-filter: blur(10px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -270,26 +270,28 @@ const handleExecute = () => {
 }
 
 .modal-content {
-  background-color: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.99);
+  border: 1px solid rgba(0, 30, 64, 0.08);
+  border-radius: 20px;
   width: 100%;
   max-width: 650px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
+  box-shadow: 0 32px 80px rgba(0, 30, 64, 0.22);
+  overflow: hidden;
   animation: slideUp 0.3s ease;
 }
 
 .modal-header {
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--nav-bg);
-  border-radius: 12px 12px 0 0;
+  background: linear-gradient(135deg, var(--primary-strong), var(--primary-soft));
+  border-radius: 20px 20px 0 0;
 }
 
 .modal-header h3 {
@@ -318,6 +320,7 @@ const handleExecute = () => {
   padding: 1.5rem;
   overflow-y: auto;
   flex: 1;
+  background: var(--surface-card);
 }
 
 .loading-details, .error-message {
@@ -385,10 +388,10 @@ const handleExecute = () => {
 
 .file-input-real {
   width: 100%;
-  padding: 0.5rem;
-  background-color: var(--bg-color);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  padding: 0.7rem 0.8rem;
+  background-color: var(--surface-low);
+  border: 1px solid rgba(0, 30, 64, 0.1);
+  border-radius: 10px;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
   cursor: pointer;
@@ -418,10 +421,10 @@ const handleExecute = () => {
 
 .text-input, .select-input {
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.85rem 0.95rem;
   background-color: white;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border: 1px solid rgba(0, 30, 64, 0.1);
+  border-radius: 10px;
   color: var(--text-primary);
   font-family: inherit;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -500,19 +503,20 @@ input:checked + .slider:before {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-  background: var(--bg-color);
-  border-radius: 0 0 12px 12px;
+  background: #f5f7fb;
+  border-radius: 0 0 20px 20px;
 }
 
 .cancel-btn {
   background: white;
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(0, 30, 64, 0.12);
   color: var(--text-primary);
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  padding: 0.65rem 1.05rem;
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .cancel-btn:hover {
@@ -524,10 +528,10 @@ input:checked + .slider:before {
   background-color: var(--accent-color);
   color: white;
   border: none;
-  padding: 0.6rem 1.5rem;
-  border-radius: 6px;
+  padding: 0.7rem 1.5rem;
+  border-radius: 10px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 700;
   display: flex;
   align-items: center;
   gap: 0.5rem;

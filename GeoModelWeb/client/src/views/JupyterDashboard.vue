@@ -13,18 +13,16 @@
     <!-- 独立的顶部导航栏 -->
     <header class="jupyter-nav">
       <div class="nav-left">
-        <a href="/" class="logo-link">
-          <img src="/logo.png" alt="OpenGeoLab" class="logo">
-        </a>
-        <a href="/" class="back-link">
-          <span class="back-icon">←</span>
-          <span>Back to OpenGeoLab</span>
-        </a>
+        <a href="/" class="back-home-link">← Back to OpenGeoLab</a>
       </div>
-      <div class="nav-center">
-        <h1 class="page-title">OpenGeoLab - Jupyter</h1>
+      <div class="nav-right">
+        <img
+          v-if="isLoggedIn && user?.avatarUrl"
+          :src="user.avatarUrl"
+          :alt="user?.displayName || 'User avatar'"
+          class="workspace-avatar"
+        >
       </div>
-      <div class="nav-right"></div>
     </header>
 
     <!-- 未登录状态 -->
@@ -32,7 +30,7 @@
       <div class="login-card">
         <div class="login-header">
           <h1>OpenGeoLab - Jupyter</h1>
-          <p>个人 JupyterLab 云端开发环境</p>
+          <p>Personal JupyterLab cloud workspace</p>
         </div>
         
         <div class="login-features">
@@ -42,11 +40,11 @@
           </div>
           <div class="feature-item">
             <span class="feature-icon"></span>
-            <span>Python 科学计算</span>
+            <span>Scientific Python Computing</span>
           </div>
           <div class="feature-item">
             <span class="feature-icon"></span>
-            <span>云端存储</span>
+            <span>Cloud Storage</span>
           </div>
         </div>
 
@@ -58,7 +56,7 @@
             class="login-input"
             type="email"
             autocomplete="username"
-            placeholder="请输入 OpenGMS 邮箱"
+            placeholder="Enter your OpenGMS email"
             @keyup.enter="loginWithOpenGMS"
           >
 
@@ -69,12 +67,12 @@
             class="login-input"
             type="password"
             autocomplete="current-password"
-            placeholder="请输入密码"
+            placeholder="Enter your password"
             @keyup.enter="loginWithOpenGMS"
           >
 
           <button class="opengms-login-btn" @click="loginWithOpenGMS" :disabled="isLoading">
-            <span>{{ isLoading ? '登录中...' : '使用 OpenGMS 账号登录' }}</span>
+            <span>{{ isLoading ? 'Signing in...' : 'Sign in with OpenGMS' }}</span>
           </button>
         </div>
 
@@ -118,7 +116,7 @@
           </button>
         </div>
 
-        <p class="login-hint">当前页面同时支持 OpenGMS、GitHub 和 Google 登录。OpenGMS 仍是主入口。</p>
+        <p class="login-hint">This page supports OpenGMS, GitHub, and Google sign-in. OpenGMS remains the primary entry point.</p>
       </div>
     </div>
 
@@ -126,7 +124,6 @@
     <div v-else class="dashboard-layout">
       <!-- 左侧边栏 -->
       <aside class="sidebar">
-        <!-- 用户信息 -->
         <div class="sidebar-user">
           <img :src="user.avatarUrl" :alt="user.username" class="user-avatar">
           <div class="user-info">
@@ -139,13 +136,13 @@
         <nav class="sidebar-nav">
           <!-- 一、开发环境 -->
           <div class="nav-section">
-            <div class="nav-section-title">开发环境</div>
+            <div class="nav-section-title">Development</div>
             <a 
               href="#" 
               :class="['nav-item', { active: activeMenu === 'recent' }]"
               @click.prevent="activeMenu = 'recent'"
             >
-              <span class="nav-icon"></span>
+              <span class="nav-icon icon-history"></span>
               <span>Recent</span>
             </a>
             <a 
@@ -153,7 +150,7 @@
               :class="['nav-item', { active: activeMenu === 'myspace' }]"
               @click.prevent="activeMenu = 'myspace'"
             >
-              <span class="nav-icon"></span>
+              <span class="nav-icon icon-folder-shared"></span>
               <span>My Space</span>
             </a>
             <a 
@@ -161,24 +158,24 @@
               :class="['nav-item', { active: activeMenu === 'sharedspace' }]"
               @click.prevent="activeMenu = 'sharedspace'"
             >
-              <span class="nav-icon"></span>
+              <span class="nav-icon icon-group"></span>
               <span>Shared Space</span>
             </a>
             <router-link class="nav-item" to="/jupyter/cases">
-              <span class="nav-icon"></span>
+              <span class="nav-icon icon-library"></span>
               <span>Case Library</span>
             </router-link>
           </div>
 
           <!-- 二、资源管理 -->
           <div class="nav-section">
-            <div class="nav-section-title">资源管理</div>
+            <div class="nav-section-title">Resources</div>
             <a 
               href="#" 
               :class="['nav-item', { active: activeMenu === 'mymodel' }]"
               @click.prevent="activeMenu = 'mymodel'"
             >
-              <span class="nav-icon"></span>
+              <span class="nav-icon icon-model"></span>
               <span>My Model</span>
             </a>
             <a 
@@ -186,7 +183,7 @@
               :class="['nav-item', { active: activeMenu === 'mydata' }]"
               @click.prevent="activeMenu = 'mydata'"
             >
-              <span class="nav-icon"></span>
+              <span class="nav-icon icon-database"></span>
               <span>My Data</span>
             </a>
             <a 
@@ -194,20 +191,20 @@
               :class="['nav-item', { active: activeMenu === 'mydatamethod' }]"
               @click.prevent="activeMenu = 'mydatamethod'"
             >
-              <span class="nav-icon"></span>
+              <span class="nav-icon icon-method"></span>
               <span>My Data Method</span>
             </a>
           </div>
 
           <!-- 三、设置 -->
           <div class="nav-section">
-            <div class="nav-section-title">设置</div>
+            <div class="nav-section-title">Settings</div>
             <a 
               href="#" 
               :class="['nav-item', { active: activeMenu === 'environments' }]"
               @click.prevent="activeMenu = 'environments'"
             >
-              <span class="nav-icon"></span>
+              <span class="nav-icon icon-settings"></span>
               <span>Environments</span>
             </a>
           </div>
@@ -216,7 +213,7 @@
         <!-- 底部退出按钮 -->
         <div class="sidebar-footer">
           <button class="logout-btn" @click="logout">
-            <span class="nav-icon"></span>
+            <span class="nav-icon icon-signout"></span>
             <span>Sign Out</span>
           </button>
         </div>
@@ -225,23 +222,41 @@
       <!-- 右侧主内容区 -->
       <main class="main-content">
         <!-- 顶部标题栏 -->
-        <header class="content-header">
+        <header class="content-header" :class="{ 'recent-mode': activeMenu === 'recent' }">
           <div class="header-left">
-            <h1 class="page-title">{{ pageTitles[activeMenu] }}</h1>
+            <h1 class="page-title">{{ activeMenu === 'recent' ? 'Recent Workspace Activity' : pageTitles[activeMenu] }}</h1>
+            <p v-if="activeMenu === 'recent'" class="page-subtitle">
+              Continue your spatial analysis or launch new collaborative modeling environments.
+            </p>
           </div>
           <div class="header-right">
-            <div class="search-box">
-              <span class="search-icon"></span>
-              <input type="text" :placeholder="searchPlaceholder" v-model="searchQuery">
-            </div>
-            <button 
-              v-if="activeMenu === 'recent' || activeMenu === 'myspace'"
-              class="header-btn create-btn" 
-              @click="showCreateProjectModal = true"
-            >
-              <span>+ Create</span>
-              <span class="dropdown-arrow">▾</span>
-            </button>
+            <template v-if="activeMenu === 'recent'">
+              <div class="runtime-summary-card">
+                <div class="runtime-summary-item">
+                  <span class="runtime-summary-label">Active Runtime</span>
+                  <strong>3h 42m</strong>
+                </div>
+                <div class="runtime-summary-divider"></div>
+                <div class="runtime-summary-item">
+                  <span class="runtime-summary-label">Instance Type</span>
+                  <strong>GPU.v100.XL</strong>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <div class="search-box">
+                <span class="search-icon"></span>
+                <input type="text" :placeholder="searchPlaceholder" v-model="searchQuery">
+              </div>
+              <button
+                v-if="activeMenu === 'myspace'"
+                class="header-btn create-btn"
+                @click="showCreateProjectModal = true"
+              >
+                <span>+ Create</span>
+                <span class="dropdown-arrow">▾</span>
+              </button>
+            </template>
           </div>
         </header>
 
@@ -250,81 +265,110 @@
           
           <!-- ========== Recent 面板 ========== -->
           <div v-if="activeMenu === 'recent'" class="recent-panel">
-            <div class="recent-layout">
-              <!-- 左侧：快速创建 + 最近项目 -->
-              <div class="recent-main">
-                <!-- 快速创建 -->
-                <section class="recent-section">
-                  <h3 class="section-title">Quickly Create</h3>
-                  <div class="quick-create-grid">
-                    <button class="quick-create-btn" @click="showCreateProjectModal = true">
-                      <span class="qc-icon"></span>
-                      <span class="qc-text">New Project</span>
-                    </button>
-                  </div>
-                </section>
+            <div class="recent-top-grid">
+              <button class="action-tile tile-create" @click="showCreateProjectModal = true">
+                <span class="action-icon icon-create"></span>
+                <strong>Create Project</strong>
+                <span>Initialize new repo</span>
+              </button>
+              <button class="action-tile tile-import" @click="activeMenu = 'mydata'">
+                <span class="action-icon icon-upload"></span>
+                <strong>Import Data</strong>
+                <span>GeoJSON, CSV, TIFF</span>
+              </button>
+              <button class="action-tile tile-open" @click="activeMenu = 'myspace'">
+                <span class="action-icon icon-notebook"></span>
+                <strong>Open Projects</strong>
+                <span>Continue active notebooks</span>
+              </button>
 
-                <!-- 最近项目 -->
-                <section class="recent-section">
-                  <h3 class="section-title">Recent Projects</h3>
-                  <div class="recent-projects-card">
-                    <div v-if="projects.length === 0" class="empty-recent">
-                      <div class="empty-icon-box"></div>
-                      <p>No Recent Projects</p>
-                    </div>
-                    <div v-else-if="filteredRecentProjects.length === 0" class="empty-recent">
-                      <div class="empty-icon-box"></div>
-                      <p>未找到匹配的项目</p>
-                    </div>
-                    <div v-else class="recent-projects-list">
-                      <div 
-                        v-for="project in filteredRecentProjects" 
-                        :key="project.name" 
-                        class="recent-project-item"
-                        @click="goToProject(project)"
-                      >
-                        <div class="project-details">
-                          <span class="project-name">{{ project.name }}</span>
-                          <span class="project-meta">{{ project.notebookCount }} notebooks • {{ formatDate(project.modifiedAt) }}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </section>
+              <div class="usage-tile">
+                <p class="usage-label">Resource Usage (Cloud)</p>
+                <div class="usage-row">
+                  <span>CPU Load</span>
+                  <strong>42%</strong>
+                </div>
+                <div class="usage-bar"><span style="width: 42%"></span></div>
+                <div class="usage-row">
+                  <span>RAM (16GB)</span>
+                  <strong>6.4GB</strong>
+                </div>
+                <div class="usage-bar blue"><span style="width: 38%"></span></div>
+              </div>
+            </div>
 
-                <!-- 我的资源 -->
-                <section class="recent-section">
-                  <div class="section-header">
-                    <h3 class="section-title">My Resources</h3>
-                    <div class="section-actions">
-                      <select class="time-filter" v-model="resourceTimeFilter">
-                        <option value="7">7 hours</option>
-                        <option value="24">24 hours</option>
-                        <option value="168">7 days</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="resources-card">
-                    <div class="empty-resources">
-                      <div class="empty-icon-box"></div>
-                      <p>No Resource Usage Information</p>
-                    </div>
-                  </div>
-                </section>
+            <section class="recent-projects-section">
+              <div class="recent-section-head">
+                <h3 class="section-title">Recent Projects</h3>
+                <button class="section-link" @click="activeMenu = 'myspace'">View All Projects</button>
               </div>
 
-              <!-- 右侧：最近使用的数据 -->
-              <div class="recent-sidebar">
-                <section class="recent-section">
-                  <h3 class="section-title">Recently Used Data</h3>
-                  <div class="recent-data-card">
-                    <div class="empty-recent">
-                      <div class="empty-icon-box"></div>
-                      <p>No Recently Used Data</p>
+              <div v-if="projects.length === 0" class="empty-recent">
+                <div class="empty-icon-box"></div>
+                <p>No Recent Projects</p>
+              </div>
+              <div v-else-if="filteredRecentProjects.length === 0" class="empty-recent">
+                <div class="empty-icon-box"></div>
+                <p>No matching projects found</p>
+              </div>
+              <div v-else class="project-activity-list">
+                <div
+                  v-for="(project, index) in filteredRecentProjects.slice(0, 4)"
+                  :key="project.name"
+                  class="project-activity-card"
+                  @click="goToProject(project)"
+                >
+                  <div :class="['project-cover', `tone-${index % 3}`]"></div>
+                  <div class="project-activity-body">
+                    <h4 class="project-activity-title">{{ project.name }}</h4>
+                    <div class="project-activity-meta">
+                      <span>{{ project.notebookCount }} Notebooks</span>
+                      <span>{{ formatRelativeTime(project.modifiedAt) }}</span>
+                      <span class="project-state-badge">Active</span>
                     </div>
                   </div>
-                </section>
+                  <button :class="['project-open-btn', index === 0 ? 'primary' : 'ghost']" @click.stop="goToProject(project)">Open in Jupyter</button>
+                </div>
               </div>
+            </section>
+
+            <div class="recent-bottom-grid">
+              <section class="recent-resources-card">
+                <div class="recent-section-head">
+                  <h3 class="section-title">Recent Resources</h3>
+                  <button class="section-link" @click="activeMenu = 'mydata'">···</button>
+                </div>
+
+                <div v-if="workspaceResources.length" class="resource-snippet-list">
+                  <div
+                    v-for="resource in workspaceResources.slice(0, 3)"
+                    :key="resource.key"
+                    class="resource-snippet-item"
+                  >
+                    <span :class="['resource-snippet-icon', `type-${resource.type.toLowerCase().replace(/\\s+/g, '-')}`]"></span>
+                    <div class="resource-snippet-main">
+                      <strong>{{ resource.name }}</strong>
+                      <span>{{ resource.type }}</span>
+                    </div>
+                    <span class="resource-snippet-side">{{ resource.meta }}</span>
+                  </div>
+                </div>
+                <div v-else class="empty-recent compact">
+                  <p>No Recent Resources</p>
+                </div>
+              </section>
+
+              <section class="insights-card">
+                <h3 class="section-title">Collaboration Insights</h3>
+                <p>3 teammates are currently active in shared environments.</p>
+                <div class="insight-avatars">
+                  <span>QH</span>
+                  <span>ZM</span>
+                  <span>ML</span>
+                  <em>+12</em>
+                </div>
+                <button class="insight-action" @click="activeMenu = 'sharedspace'">Join Team Room</button>
+              </section>
             </div>
           </div>
 
@@ -346,8 +390,8 @@
                     <td colspan="5" class="empty-row">
                       <div class="empty-state">
                         <div class="empty-icon">📁</div>
-                        <p>还没有项目</p>
-                        <p class="empty-hint">点击右上角 + Create 创建新项目</p>
+                        <p>No projects yet</p>
+                        <p class="empty-hint">Use + Create in the top right to start a new project</p>
                       </div>
                     </td>
                   </tr>
@@ -379,13 +423,13 @@
                     </td>
                     <td class="col-actions">
                       <div class="action-buttons">
-                        <button class="action-icon-btn" @click.stop="goToProject(project)" title="打开项目">
+                        <button class="action-icon-btn" @click.stop="goToProject(project)" title="Open project">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                         </button>
-                        <button class="action-icon-btn" @click.stop="editProject(project)" title="编辑项目">
+                        <button class="action-icon-btn" @click.stop="editProject(project)" title="Edit project">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                         </button>
-                        <button class="action-icon-btn" @click.stop="toggleProjectVisibility(project)" :title="project.isPublic ? '设为私有' : '设为公开'">
+                        <button class="action-icon-btn" @click.stop="toggleProjectVisibility(project)" :title="project.isPublic ? 'Make private' : 'Make public'">
                           <svg v-if="project.isPublic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                           <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </button>
@@ -393,7 +437,7 @@
                           <svg v-if="project.isCase" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 5h14v14H5z"/><path d="M8 12h8"/><path d="M8 8h8"/><path d="M8 16h5"/></svg>
                           <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l2.4 4.86 5.36.78-3.88 3.78.92 5.34L12 15.4 7.2 17.76l.92-5.34L4.24 8.64l5.36-.78L12 3z"/></svg>
                         </button>
-                        <button class="action-icon-btn danger" @click.stop="deleteProject(project)" title="删除项目">
+                        <button class="action-icon-btn danger" @click.stop="deleteProject(project)" title="Delete project">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         </button>
                       </div>
@@ -408,21 +452,21 @@
           <div v-else-if="activeMenu === 'mymodel'" class="mymodel-panel">
             <div class="panel-toolbar">
               <button class="add-btn" @click="openModelSelector">
-                <span>+ 从模型库添加</span>
+                <span>+ Add from Model Library</span>
               </button>
             </div>
             
             <div class="resource-list">
               <div v-if="myModels.length === 0" class="empty-state">
                 <div class="empty-icon"></div>
-                <p>还没有添加模型</p>
-                <p class="empty-hint">点击上方按钮从模型库中选择添加</p>
+                <p>No models added yet</p>
+                <p class="empty-hint">Use the button above to add items from the model library</p>
               </div>
               
               <div v-else-if="filteredMyModels.length === 0" class="empty-state">
                 <div class="empty-icon"></div>
-                <p>未找到匹配的模型</p>
-                <p class="empty-hint">请尝试其他搜索关键词</p>
+                <p>No matching models found</p>
+                <p class="empty-hint">Try a different search keyword</p>
               </div>
               
               <div v-else class="resource-grid">
@@ -435,12 +479,12 @@
                     <span class="resource-icon"></span>
                     <h4 class="resource-name">{{ model.name }}</h4>
                   </div>
-                  <p class="resource-desc">{{ model.description || '暂无描述' }}</p>
+                  <p class="resource-desc">{{ model.description || 'No description available' }}</p>
                   <div class="resource-footer">
                     <span class="resource-meta">{{ model.author || 'OpenGeoLab' }}</span>
                     <div class="resource-actions">
-                      <button class="action-btn run" @click="runModel(model)" title="运行"></button>
-                      <button class="action-btn remove" @click="removeFromMyModels(model)" title="移除">×</button>
+                      <button class="action-btn run" @click="runModel(model)" title="Run"></button>
+                      <button class="action-btn remove" @click="removeFromMyModels(model)" title="Remove">×</button>
                     </div>
                   </div>
                 </div>
@@ -452,21 +496,21 @@
           <div v-else-if="activeMenu === 'mydatamethod'" class="mydatamethod-panel">
             <div class="panel-toolbar">
               <button class="add-btn" @click="openDataMethodSelector">
-                <span>+ 从数据方法库添加</span>
+                <span>+ Add from Data Method Library</span>
               </button>
             </div>
             
             <div class="resource-list">
               <div v-if="myDataMethods.length === 0" class="empty-state">
                 <div class="empty-icon"></div>
-                <p>还没有添加数据方法</p>
-                <p class="empty-hint">点击上方按钮从数据方法库中选择添加</p>
+                <p>No data methods added yet</p>
+                <p class="empty-hint">Use the button above to add items from the data method library</p>
               </div>
               
               <div v-else-if="filteredMyDataMethods.length === 0" class="empty-state">
                 <div class="empty-icon"></div>
-                <p>未找到匹配的数据方法</p>
-                <p class="empty-hint">请尝试其他搜索关键词</p>
+                <p>No matching data methods found</p>
+                <p class="empty-hint">Try a different search keyword</p>
               </div>
               
               <div v-else class="resource-grid">
@@ -479,12 +523,12 @@
                     <span class="resource-icon"></span>
                     <h4 class="resource-name">{{ method.name }}</h4>
                   </div>
-                  <p class="resource-desc">{{ method.description || '暂无描述' }}</p>
+                  <p class="resource-desc">{{ method.description || 'No description available' }}</p>
                   <div class="resource-footer">
                     <span class="resource-meta">{{ method.author || 'OpenGeoLab' }}</span>
                     <div class="resource-actions">
-                      <button class="action-btn run" @click="runDataMethod(method)" title="运行"></button>
-                      <button class="action-btn remove" @click="removeFromMyDataMethods(method)" title="移除">×</button>
+                      <button class="action-btn run" @click="runDataMethod(method)" title="Run"></button>
+                      <button class="action-btn remove" @click="removeFromMyDataMethods(method)" title="Remove">×</button>
                     </div>
                   </div>
                 </div>
@@ -497,23 +541,23 @@
             <!-- 工具栏 -->
             <div class="netdisk-toolbar">
               <button class="toolbar-btn primary" @click="openForkDataModal">
-                <span>Fork 数据</span>
+                <span>Fork Data</span>
               </button>
               <button class="toolbar-btn" @click="navigateBack" :disabled="currentDataPath === '/'">
                 <span class="btn-icon">«</span>
-                <span>返回</span>
+                <span>Back</span>
               </button>
               <button class="toolbar-btn" @click="loadMyData">
                 <span class="btn-icon">↻</span>
-                <span>刷新</span>
+                <span>Refresh</span>
               </button>
               <button class="toolbar-btn upload" @click="openDataUploader">
                 <span class="btn-icon">⬆</span>
-                <span>上传数据</span>
+                <span>Upload Data</span>
               </button>
               <button class="toolbar-btn" @click="createNewFolder">
                 <span class="btn-icon">+</span>
-                <span>新建文件夹</span>
+                <span>New Folder</span>
               </button>
               <span class="current-path">{{ currentDataPath }}</span>
             </div>
@@ -522,12 +566,12 @@
             <div class="netdisk-content">
               <div v-if="loadingMyData" class="loading-state">
                 <div class="spinner"></div>
-                <p>加载中...</p>
+                <p>Loading...</p>
               </div>
 
               <div v-else-if="currentDataItems.length === 0" class="empty-state">
-                <p>文件夹为空</p>
-                <p class="empty-hint">点击上方按钮上传数据或从数据中心 Fork</p>
+                <p>This folder is empty</p>
+                <p class="empty-hint">Use the buttons above to upload data or fork from the data center</p>
               </div>
 
               <div v-else class="netdisk-grid">
@@ -550,7 +594,7 @@
                       <span class="file-ext">{{ getFileExtension(item.name) }}</span>
                     </div>
                     <!-- Fork 标识 -->
-                    <div v-if="item.forked" class="fork-badge" title="已从数据中心 Fork">
+                    <div v-if="item.forked" class="fork-badge" title="Forked from the data center">
                       <span>Fork</span>
                     </div>
                   </div>
@@ -564,9 +608,9 @@
 
             <!-- 底部状态栏 -->
             <div class="netdisk-statusbar">
-              <span>{{ myDataList.length }} 个项目</span>
-              <span v-if="selectedDataItems.length > 0">已选择 {{ selectedDataItems.length }} 项</span>
-              <span class="storage-info">已用存储: {{ calculateTotalDataSize() }}</span>
+              <span>{{ myDataList.length }} items</span>
+              <span v-if="selectedDataItems.length > 0">{{ selectedDataItems.length }} selected</span>
+              <span class="storage-info">Storage used: {{ calculateTotalDataSize() }}</span>
             </div>
           </div>
 
@@ -574,7 +618,7 @@
           <div v-if="showForkDataModal" class="modal-overlay" @click.self="showForkDataModal = false">
             <div class="fork-data-modal">
               <div class="modal-header">
-                <h3>从数据中心 Fork 数据</h3>
+                <h3>Fork Data from the Data Center</h3>
                 <button class="close-btn" @click="showForkDataModal = false">×</button>
               </div>
 
@@ -582,10 +626,10 @@
                 <input 
                   type="text" 
                   v-model="forkSearchQuery" 
-                  placeholder="搜索数据中心..."
+                  placeholder="Search the data center..."
                   @keyup.enter="searchDataCenter"
                 >
-                <button class="search-btn" @click="searchDataCenter">搜索</button>
+                <button class="search-btn" @click="searchDataCenter">Search</button>
               </div>
 
               <!-- 分类筛选 -->
@@ -603,11 +647,11 @@
               <div class="fork-data-list">
                 <div v-if="loadingDataCenter" class="loading-state compact">
                   <div class="spinner"></div>
-                  <span>加载数据中心...</span>
+                  <span>Loading data center...</span>
                 </div>
 
                 <div v-else-if="dataCenterList.length === 0" class="empty-state compact">
-                  <p>暂无数据</p>
+                  <p>No data available</p>
                 </div>
 
                 <div v-else class="fork-items">
@@ -624,7 +668,7 @@
                     <div class="fork-item-info">
                       <div class="fork-item-name">{{ item.name }}</div>
                       <div class="fork-item-meta">
-                        <span class="fork-item-type">{{ item.suffix || '未知类型' }}</span>
+                        <span class="fork-item-type">{{ item.suffix || 'Unknown type' }}</span>
                         <span class="fork-item-size">{{ formatSize(item.fileSize) }}</span>
                         <span class="fork-item-author" v-if="item.author">{{ item.author }}</span>
                       </div>
@@ -634,30 +678,30 @@
                       @click.stop="forkSingleItem(item)"
                       :disabled="isItemForked(item.id)"
                     >
-                      {{ isItemForked(item.id) ? '已 Fork' : 'Fork' }}
+                      {{ isItemForked(item.id) ? 'Forked' : 'Fork' }}
                     </button>
                   </div>
                 </div>
 
                 <!-- 分页 -->
                 <div class="fork-pagination" v-if="dataCenterTotalPages > 1">
-                  <button :disabled="dataCenterPage === 1" @click="changeForkPage(dataCenterPage - 1)">上一页</button>
+                  <button :disabled="dataCenterPage === 1" @click="changeForkPage(dataCenterPage - 1)">Previous</button>
                   <span>{{ dataCenterPage }} / {{ dataCenterTotalPages }}</span>
-                  <button :disabled="dataCenterPage === dataCenterTotalPages" @click="changeForkPage(dataCenterPage + 1)">下一页</button>
+                  <button :disabled="dataCenterPage === dataCenterTotalPages" @click="changeForkPage(dataCenterPage + 1)">Next</button>
                 </div>
               </div>
 
               <div class="modal-footer">
                 <span class="selected-count" v-if="forkSelectedItems.length > 0">
-                  已选择 {{ forkSelectedItems.length }} 项
+                  {{ forkSelectedItems.length }} selected
                 </span>
-                <button class="cancel-btn" @click="showForkDataModal = false">取消</button>
+                <button class="cancel-btn" @click="showForkDataModal = false">Cancel</button>
                 <button 
                   class="confirm-btn" 
                   @click="forkSelectedData"
                   :disabled="forkSelectedItems.length === 0 || forkingData"
                 >
-                  {{ forkingData ? 'Fork 中...' : `Fork 选中项 (${forkSelectedItems.length})` }}
+                  {{ forkingData ? 'Forking...' : `Fork Selected (${forkSelectedItems.length})` }}
                 </button>
               </div>
             </div>
@@ -671,13 +715,13 @@
             @click.stop
           >
             <div class="context-item" @click="downloadContextItem">
-              下载
+              Download
             </div>
             <div class="context-item" @click="renameContextItem">
-              重命名
+              Rename
             </div>
             <div class="context-item danger" @click="deleteContextItem">
-              删除
+              Delete
             </div>
           </div>
 
@@ -686,7 +730,7 @@
             <!-- 项目共享空间 -->
             <div class="shared-projects-section">
               <div class="panel-intro">
-                <p>浏览其他用户公开分享的项目，您可以预览项目内容并 Fork 到自己的空间中继续开发。</p>
+                <p>Browse public projects shared by other users. You can preview them and fork them into your own workspace for continued development.</p>
               </div>
               
               <!-- 搜索栏 -->
@@ -694,19 +738,19 @@
                 <input 
                   type="text" 
                   v-model="sharedSearchQuery" 
-                  placeholder="搜索公开项目..."
+                  placeholder="Search public projects..."
                   class="shared-search-input"
                 >
               </div>
               
               <div v-if="loadingSharedProjects" class="loading-state">
                 <div class="spinner"></div>
-                <p>加载共享项目...</p>
+                <p>Loading shared projects...</p>
               </div>
               
               <div v-else-if="filteredSharedProjects.length === 0" class="empty-state">
-                <p>暂无公开项目</p>
-                <span class="empty-hint">当其他用户公开分享项目时，会显示在这里</span>
+                <p>No public projects yet</p>
+                <span class="empty-hint">Shared projects from other users will appear here</span>
               </div>
               
               <div v-else class="shared-projects-grid">
@@ -728,7 +772,7 @@
                     {{ project.description }}
                   </p>
                   <p class="project-description empty" v-else>
-                    暂无描述
+                    No description available
                   </p>
                   
                   <div class="project-stats">
@@ -741,24 +785,24 @@
                   </div>
                   
                   <div class="project-time">
-                    <span>更新于 {{ formatRelativeTime(project.modifiedAt) }}</span>
+                    <span>Updated {{ formatRelativeTime(project.modifiedAt) }}</span>
                   </div>
                   
                   <div class="shared-card-actions">
                     <button 
                       class="action-btn preview" 
                       @click="previewSharedProject(project)"
-                      title="预览项目"
+                      title="Preview project"
                     >
-                      预览
+                      Preview
                     </button>
                     <button 
                       class="action-btn fork" 
                       @click="forkProject(project)"
                       :disabled="forkingProject === `${project.owner}/${project.name}`"
-                      title="Fork 到我的空间"
+                      title="Fork into my workspace"
                     >
-                      {{ forkingProject === `${project.owner}/${project.name}` ? 'Fork 中...' : 'Fork' }}
+                      {{ forkingProject === `${project.owner}/${project.name}` ? 'Forking...' : 'Fork' }}
                     </button>
                   </div>
                 </div>
@@ -842,7 +886,7 @@
     <div v-if="showModelSelector" class="modal-overlay" @click.self="showModelSelector = false">
       <div class="modal-content selector-modal">
         <div class="modal-header">
-          <h2>从模型库选择</h2>
+          <h2>Select from Model Library</h2>
           <button class="close-btn" @click="showModelSelector = false">×</button>
         </div>
         <div class="modal-body">
@@ -850,15 +894,15 @@
             <input 
               type="text" 
               v-model="librarySearchQuery" 
-              placeholder="搜索模型..."
+              placeholder="Search models..."
               @keyup.enter="searchModelLibrary"
             >
-            <button @click="searchModelLibrary">搜索</button>
+            <button @click="searchModelLibrary">Search</button>
           </div>
           
           <div v-if="libraryLoading" class="selector-loading">
             <div class="spinner"></div>
-            <p>加载中...</p>
+            <p>Loading...</p>
           </div>
           
           <div v-else class="selector-list">
@@ -871,7 +915,7 @@
               <div class="item-info">
                 <div class="item-details">
                   <h4>{{ model.name }}</h4>
-                  <p>{{ model.description || '暂无描述' }}</p>
+                  <p>{{ model.description || 'No description available' }}</p>
                 </div>
               </div>
               <button 
@@ -879,19 +923,19 @@
                 :disabled="isModelAdded(model)"
                 @click="addToMyModels(model)"
               >
-                {{ isModelAdded(model) ? '已添加' : '+ 添加' }}
+                {{ isModelAdded(model) ? 'Added' : '+ Add' }}
               </button>
             </div>
             
             <div v-if="modelLibrary.length === 0" class="empty-selector">
-              <p>没有找到模型</p>
+              <p>No models found</p>
             </div>
           </div>
           
           <div v-if="libraryTotal > 0" class="selector-pagination">
-            <button :disabled="libraryPage === 1 || libraryLoading" @click="loadModelLibrary(libraryPage - 1)">上一页</button>
+            <button :disabled="libraryPage === 1 || libraryLoading" @click="loadModelLibrary(libraryPage - 1)">Previous</button>
             <span>{{ libraryPage }} / {{ Math.max(1, Math.ceil(libraryTotal / 12)) }}</span>
-            <button :disabled="libraryPage >= Math.ceil(libraryTotal / 12) || libraryLoading" @click="loadModelLibrary(libraryPage + 1)">下一页</button>
+            <button :disabled="libraryPage >= Math.ceil(libraryTotal / 12) || libraryLoading" @click="loadModelLibrary(libraryPage + 1)">Next</button>
           </div>
         </div>
       </div>
@@ -901,7 +945,7 @@
     <div v-if="showDataMethodSelector" class="modal-overlay" @click.self="showDataMethodSelector = false">
       <div class="modal-content selector-modal">
         <div class="modal-header">
-          <h2>从数据方法库选择</h2>
+          <h2>Select from Data Method Library</h2>
           <button class="close-btn" @click="showDataMethodSelector = false">×</button>
         </div>
         <div class="modal-body">
@@ -909,15 +953,15 @@
             <input 
               type="text" 
               v-model="librarySearchQuery" 
-              placeholder="搜索数据方法..."
+              placeholder="Search data methods..."
               @keyup.enter="searchDataMethodLibrary"
             >
-            <button @click="searchDataMethodLibrary">搜索</button>
+            <button @click="searchDataMethodLibrary">Search</button>
           </div>
           
           <div v-if="libraryLoading" class="selector-loading">
             <div class="spinner"></div>
-            <p>加载中...</p>
+            <p>Loading...</p>
           </div>
           
           <div v-else class="selector-list">
@@ -930,7 +974,7 @@
               <div class="item-info">
                 <div class="item-details">
                   <h4>{{ method.name }}</h4>
-                  <p>{{ method.description || '暂无描述' }}</p>
+                  <p>{{ method.description || 'No description available' }}</p>
                 </div>
               </div>
               <button 
@@ -938,19 +982,19 @@
                 :disabled="isDataMethodAdded(method)"
                 @click="addToMyDataMethods(method)"
               >
-                {{ isDataMethodAdded(method) ? '已添加' : '+ 添加' }}
+                {{ isDataMethodAdded(method) ? 'Added' : '+ Add' }}
               </button>
             </div>
             
             <div v-if="dataMethodLibrary.length === 0" class="empty-selector">
-              <p>没有找到数据方法</p>
+              <p>No data methods found</p>
             </div>
           </div>
           
           <div v-if="libraryTotal > 0" class="selector-pagination">
-            <button :disabled="libraryPage === 1 || libraryLoading" @click="loadDataMethodLibrary(libraryPage - 1)">上一页</button>
+            <button :disabled="libraryPage === 1 || libraryLoading" @click="loadDataMethodLibrary(libraryPage - 1)">Previous</button>
             <span>{{ libraryPage }} / {{ Math.max(1, Math.ceil(libraryTotal / 12)) }}</span>
-            <button :disabled="libraryPage >= Math.ceil(libraryTotal / 12) || libraryLoading" @click="loadDataMethodLibrary(libraryPage + 1)">下一页</button>
+            <button :disabled="libraryPage >= Math.ceil(libraryTotal / 12) || libraryLoading" @click="loadDataMethodLibrary(libraryPage + 1)">Next</button>
           </div>
         </div>
       </div>
@@ -960,24 +1004,24 @@
     <div v-if="showCreateProjectModal" class="modal-overlay" @click.self="showCreateProjectModal = false">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>创建新项目</h2>
+          <h2>Create New Project</h2>
           <button class="close-btn" @click="showCreateProjectModal = false">×</button>
         </div>
         <div class="modal-body">
           <div class="form-group">
-            <label>项目名称</label>
+            <label>Project Name</label>
             <input 
               type="text" 
               v-model="newProjectName" 
-              placeholder="输入项目名称"
+              placeholder="Enter project name"
               @keyup.enter="createProject"
             >
           </div>
           <div class="form-group">
-            <label>描述（可选）</label>
+            <label>Description (Optional)</label>
             <textarea 
               v-model="newProjectDescription" 
-              placeholder="项目描述"
+              placeholder="Project description"
               rows="3"
             ></textarea>
           </div>
@@ -985,15 +1029,15 @@
             <label class="checkbox-label">
               <input type="checkbox" v-model="newProjectIsPublic">
               <span class="checkbox-custom"></span>
-              <span class="checkbox-text">project 新建时是否公开</span>
+              <span class="checkbox-text">Make this project public when created</span>
             </label>
-            <p class="checkbox-hint">公开后，其他用户可以在 Shared Space 查看和 Fork 您的项目</p>
+            <p class="checkbox-hint">Public projects can be viewed and forked by other users in Shared Space.</p>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn-cancel" @click="showCreateProjectModal = false">取消</button>
+          <button class="btn-cancel" @click="showCreateProjectModal = false">Cancel</button>
           <button class="btn-create" @click="createProject" :disabled="!newProjectName.trim() || isCreating">
-            {{ isCreating ? '创建中...' : '创建项目' }}
+            {{ isCreating ? 'Creating...' : 'Create Project' }}
           </button>
         </div>
       </div>
@@ -1067,7 +1111,7 @@
     <div v-if="showDataUploader" class="modal-overlay" @click.self="closeDataUploader">
       <div class="modal-content upload-modal">
         <div class="modal-header">
-          <h2>上传数据</h2>
+          <h2>Upload Data</h2>
           <button class="close-btn" @click="closeDataUploader">×</button>
         </div>
         <div class="modal-body">
@@ -1087,8 +1131,8 @@
               style="display: none"
             >
             <div v-if="!uploadFile" class="dropzone-content">
-              <p class="dropzone-text">拖拽文件到此处，或点击选择文件</p>
-              <p class="dropzone-hint">支持 CSV, JSON, GeoJSON, TIF, SHP, NC 等格式</p>
+              <p class="dropzone-text">Drag a file here, or click to choose one</p>
+              <p class="dropzone-hint">Supports CSV, JSON, GeoJSON, TIF, SHP, NC, and more</p>
             </div>
             <div v-else class="file-preview">
               <div class="file-icon">{{ getDataIcon(getFileExtension(uploadFile.name)) }}</div>
@@ -1102,10 +1146,10 @@
 
           <!-- 数据描述 -->
           <div class="form-group">
-            <label>数据描述（可选）</label>
+            <label>Data Description (Optional)</label>
             <textarea 
               v-model="uploadDataDescription" 
-              placeholder="描述这份数据的内容、来源、用途等"
+              placeholder="Describe the content, source, and intended use of this dataset"
               rows="3"
             ></textarea>
           </div>
@@ -1119,13 +1163,13 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn-cancel" @click="closeDataUploader" :disabled="isUploading">取消</button>
+          <button class="btn-cancel" @click="closeDataUploader" :disabled="isUploading">Cancel</button>
           <button 
             class="btn-create" 
             @click="uploadData" 
             :disabled="!uploadFile || isUploading"
           >
-            {{ isUploading ? '上传中...' : '上传数据' }}
+            {{ isUploading ? 'Uploading...' : 'Upload Data' }}
           </button>
         </div>
       </div>
@@ -1224,16 +1268,26 @@ const toastType = ref('success') // success, error, warning, info
 const showToast = ref(false)
 let toastTimer = null
 const oauthErrorMessages = {
-  github_not_configured: 'GitHub 登录尚未配置',
-  github_no_code: 'GitHub 未返回授权码，请重试',
-  github_token_failed: 'GitHub 令牌获取失败',
-  github_oauth_failed: 'GitHub 登录失败，请稍后重试',
-  google_not_configured: 'Google 登录尚未配置',
-  google_access_denied: '你已取消 Google 登录授权',
-  google_no_code: 'Google 未返回授权码，请重试',
-  google_token_failed: 'Google 令牌获取失败',
-  google_profile_failed: 'Google 账户信息获取失败',
-  google_oauth_failed: 'Google 登录失败，请稍后重试'
+  github_not_configured: 'GitHub sign-in is not configured.',
+  github_no_code: 'GitHub did not return an authorization code. Please try again.',
+  github_token_failed: 'Failed to retrieve a GitHub access token.',
+  github_oauth_failed: 'GitHub sign-in failed. Please try again later.',
+  google_not_configured: 'Google sign-in is not configured.',
+  google_access_denied: 'Google sign-in was canceled.',
+  google_no_code: 'Google did not return an authorization code. Please try again.',
+  google_token_failed: 'Failed to retrieve a Google access token.',
+  google_profile_failed: 'Failed to retrieve Google account information.',
+  google_oauth_failed: 'Google sign-in failed. Please try again later.'
+}
+
+const containsChinese = (text = '') => /[\u4e00-\u9fff]/.test(String(text))
+
+const getUiErrorMessage = (error, fallback = 'Something went wrong') => {
+  const raw = error?.response?.data?.error || error?.message
+  if (!raw || containsChinese(raw)) {
+    return fallback
+  }
+  return String(raw)
 }
 
 // 显示提示框
@@ -1250,19 +1304,19 @@ const showToastMessage = (message, type = 'success', duration = 3000) => {
 
 // 数据中心分类
 const dataCenterCategories = [
-  { label: '全部', value: '' },
-  { label: '基础地理', value: '基础地理' },
-  { label: '土地利用', value: '土地利用/覆盖' },
-  { label: '地形', value: '地形' },
-  { label: '气候', value: '气候' },
-  { label: '水文', value: '水文' },
-  { label: '土壤', value: '土壤' },
-  { label: '植被', value: '植被' },
-  { label: '生态系统', value: '生态系统' },
-  { label: '人口', value: '人口' },
-  { label: '社会经济', value: '社会经济' },
-  { label: '灾害', value: '灾害' },
-  { label: '其他', value: '其他数据' }
+  { label: 'All', value: '' },
+  { label: 'Base Geography', value: '基础地理' },
+  { label: 'Land Use', value: '土地利用/覆盖' },
+  { label: 'Terrain', value: '地形' },
+  { label: 'Climate', value: '气候' },
+  { label: 'Hydrology', value: '水文' },
+  { label: 'Soil', value: '土壤' },
+  { label: 'Vegetation', value: '植被' },
+  { label: 'Ecosystem', value: '生态系统' },
+  { label: 'Population', value: '人口' },
+  { label: 'Socioeconomics', value: '社会经济' },
+  { label: 'Hazards', value: '灾害' },
+  { label: 'Other', value: '其他数据' }
 ]
 
 // My Model 和 My Data Method 相关状态
@@ -1283,6 +1337,11 @@ const loadingEnvironments = ref(false)
 const hoverEnvId = ref(null)
 const userDefaultEnvId = ref(localStorage.getItem('default_jupyter_env') || null)
 const selectedEnvId = ref(localStorage.getItem('default_jupyter_env') || 'geomodel-jupyter')
+const environmentLabelMap = {
+  'geomodel-jupyter': 'Geo-Standard',
+  'geomodel-jupyter-dl': 'Deep Learning Geo',
+  'geomodel-jupyter-hydro': 'Hydrology Suite'
+}
 
 // 选择环境
 const selectEnvironment = (envId) => {
@@ -1304,6 +1363,10 @@ const defaultEnvironment = computed(() => {
   }
   // 否则使用系统默认
   return availableEnvironments.value.find(e => e.default) || availableEnvironments.value[0]
+})
+
+const selectedEnvironmentLabel = computed(() => {
+  return environmentLabelMap[selectedEnvId.value] || selectedEnvId.value || 'Geo-Standard'
 })
 
 // 切换菜单时清空搜索
@@ -1369,6 +1432,42 @@ const filteredRecentProjects = computed(() => {
   if (!searchQuery.value) return sorted
   const query = searchQuery.value.toLowerCase()
   return sorted.filter(p => p.name.toLowerCase().includes(query))
+})
+
+const workspaceResources = computed(() => {
+  const items = []
+
+  myDataList.value.slice(0, 2).forEach(item => {
+    items.push({
+      key: `data-${item.id || item.name}`,
+      icon: '◫',
+      name: item.name,
+      type: item.type === 'folder' ? 'Folder' : 'Dataset',
+      meta: item.size ? formatSize(item.size) : '--'
+    })
+  })
+
+  myModels.value.slice(0, 1).forEach(item => {
+    items.push({
+      key: `model-${item.id || item.name}`,
+      icon: '◧',
+      name: item.name,
+      type: 'Model',
+      meta: item.author || 'OpenGeoLab'
+    })
+  })
+
+  myDataMethods.value.slice(0, 1).forEach(item => {
+    items.push({
+      key: `method-${item.id || item.name}`,
+      icon: '◨',
+      name: item.name,
+      type: 'Method',
+      meta: item.author || 'OpenGeoLab'
+    })
+  })
+
+  return items
 })
 
 // 过滤后的模型列表
@@ -1480,19 +1579,19 @@ const totalSize = computed(() => {
 
 // 计算最近活动时间
 const lastModified = computed(() => {
-  if (projects.value.length === 0) return '无'
+  if (projects.value.length === 0) return 'None'
   const latest = projects.value.reduce((latest, p) => {
     const pTime = new Date(p.modifiedAt).getTime()
     return pTime > latest ? pTime : latest
   }, 0)
-  if (latest === 0) return '无'
+  if (latest === 0) return 'None'
   const date = new Date(latest)
   const now = new Date()
   const diff = now - date
-  if (diff < 60000) return '刚刚'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`
-  return `${Math.floor(diff / 86400000)} 天前`
+  if (diff < 60000) return 'Just now'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} min ago`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} hr ago`
+  return `${Math.floor(diff / 86400000)} day${Math.floor(diff / 86400000) > 1 ? 's' : ''} ago`
 })
 
 // 跳转到项目详情页
@@ -1525,7 +1624,7 @@ const createProject = async () => {
       router.push(`/jupyter/project/${encodeURIComponent(res.data.project.name)}`)
     }
   } catch (e) {
-    alert('创建失败: ' + (e.response?.data?.error || e.message))
+    alert(getUiErrorMessage(e, 'Failed to create project.'))
   } finally {
     isCreating.value = false
   }
@@ -1543,10 +1642,10 @@ const toggleProjectMenu = (project) => {
 // 编辑项目（名称和描述）
 const editProject = async (project) => {
   // 使用简单的 prompt 进行编辑
-  const newName = prompt('项目名称:', project.name)
+  const newName = prompt('Project name:', project.name)
   if (newName === null) return // 用户取消
   
-  const newDesc = prompt('项目描述:', project.description || '')
+  const newDesc = prompt('Project description:', project.description || '')
   if (newDesc === null) return // 用户取消
   
   const hasNameChange = newName.trim() && newName.trim() !== project.name
@@ -1570,7 +1669,7 @@ const editProject = async (project) => {
       projects.value[idx].description = newDesc
     }
   } catch (e) {
-    alert('更新失败: ' + (e.response?.data?.error || e.message))
+    alert(getUiErrorMessage(e, 'Failed to update project.'))
   }
   openMenuProject.value = null
 }
@@ -1580,13 +1679,13 @@ const renameProject = editProject
 
 // 删除项目
 const deleteProject = async (project) => {
-  if (confirm(`确定要删除项目 "${project.name}" 吗？\n此操作将删除项目内所有文件，不可恢复！`)) {
+  if (confirm(`Delete project "${project.name}"?\nThis will remove all files in the project and cannot be undone.`)) {
     try {
       await authAxios().delete(`/api/jupyter/projects/${encodeURIComponent(project.name)}`)
       // 从列表移除
       projects.value = projects.value.filter(p => p.name !== project.name)
     } catch (e) {
-      alert('删除失败: ' + (e.response?.data?.error || e.message))
+      alert(getUiErrorMessage(e, 'Failed to delete project.'))
     }
   }
   openMenuProject.value = null
@@ -1595,9 +1694,9 @@ const deleteProject = async (project) => {
 // 切换项目公开/私有状态
 const toggleProjectVisibility = async (project) => {
   const newVisibility = !project.isPublic
-  const action = newVisibility ? '公开' : '设为私有'
+  const action = newVisibility ? 'make public' : 'make private'
   
-  if (!confirm(`确定要将项目 "${project.name}" ${action}吗？\n${newVisibility ? '公开后其他用户可以查看和 Fork 此项目' : '设为私有后将不再出现在 Shared Space'}`)) {
+  if (!confirm(`Are you sure you want to ${action} "${project.name}"?\n${newVisibility ? 'Other users will be able to view and fork this project.' : 'The project will no longer appear in Shared Space.'}`)) {
     openMenuProject.value = null
     return
   }
@@ -1612,7 +1711,7 @@ const toggleProjectVisibility = async (project) => {
       projects.value[idx].isPublic = newVisibility
     }
   } catch (e) {
-    alert('更新失败: ' + (e.response?.data?.error || e.message))
+    alert(getUiErrorMessage(e, 'Failed to update project visibility.'))
   }
   openMenuProject.value = null
 }
@@ -1702,7 +1801,7 @@ const formatDateTime = (date) => {
 
 // 格式化相对时间
 const formatRelativeTime = (date) => {
-  if (!date) return '未知'
+  if (!date) return 'Unknown'
   const now = new Date()
   const d = new Date(date)
   const diffMs = now - d
@@ -1716,13 +1815,13 @@ const formatRelativeTime = (date) => {
     const day = String(d.getDate()).padStart(2, '0')
     return `${d.getFullYear()}/${month}/${day}`
   } else if (diffDay > 0) {
-    return `${diffDay} 天前`
+    return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`
   } else if (diffHour > 0) {
-    return `${diffHour} 小时前`
+    return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`
   } else if (diffMin > 0) {
-    return `${diffMin} 分钟前`
+    return `${diffMin} minute${diffMin > 1 ? 's' : ''} ago`
   } else {
-    return '刚刚'
+    return 'Just now'
   }
 }
 
@@ -1756,7 +1855,7 @@ const startOAuthLogin = (provider) => {
 // OpenGMS 登录
 const loginWithOpenGMS = async () => {
   if (!loginForm.value.email || !loginForm.value.password) {
-    showToastMessage('请输入 OpenGMS 邮箱和密码', 'warning')
+    showToastMessage('Please enter your OpenGMS email and password.', 'warning')
     return
   }
 
@@ -1768,7 +1867,7 @@ const loginWithOpenGMS = async () => {
     })
 
     if (!res.data?.token) {
-      throw new Error(res.data?.error || '登录失败')
+      throw new Error(res.data?.error || 'Sign-in failed.')
     }
 
     setToken(res.data.token)
@@ -1776,7 +1875,7 @@ const loginWithOpenGMS = async () => {
 
     const loggedIn = await fetchUser()
     if (!loggedIn) {
-      throw new Error('登录状态校验失败')
+      throw new Error('Failed to verify sign-in status.')
     }
 
     await Promise.all([
@@ -1785,10 +1884,10 @@ const loginWithOpenGMS = async () => {
       loadMyDataMethods()
     ])
 
-    showToastMessage('登录成功', 'success')
+    showToastMessage('Signed in successfully.', 'success')
   } catch (e) {
     clearToken()
-    showToastMessage('登录失败: ' + (e.response?.data?.error || e.message), 'error')
+    showToastMessage(getUiErrorMessage(e, 'Sign-in failed.'), 'error')
   } finally {
     isLoading.value = false
   }
@@ -1872,15 +1971,15 @@ const forkProject = async (project) => {
       projects.value.unshift(res.data.project)
       
       // 显示成功提示
-      alert(`成功 Fork 项目！新项目名称：${res.data.project.name}`)
+      alert(`Project forked successfully. New project name: ${res.data.project.name}`)
       
       // 询问是否跳转到新项目
-      if (confirm('是否立即打开 Fork 的项目？')) {
+      if (confirm('Open the forked project now?')) {
         router.push(`/jupyter/project/${encodeURIComponent(res.data.project.name)}`)
       }
     }
   } catch (e) {
-    alert('Fork 失败: ' + (e.response?.data?.error || e.message))
+    alert(getUiErrorMessage(e, 'Failed to fork project.'))
   } finally {
     forkingProject.value = null
   }
@@ -1920,7 +2019,7 @@ const navigateBack = () => {
 
 // 创建新文件夹
 const createNewFolder = async () => {
-  const folderName = prompt('请输入文件夹名称:')
+  const folderName = prompt('Enter a folder name:')
   if (!folderName || !folderName.trim()) return
   
   try {
@@ -1942,11 +2041,11 @@ const createNewFolder = async () => {
         parentId: getCurrentParentId(),
         createdAt: new Date().toISOString()
       })
-      showToastMessage('文件夹创建成功', 'success')
+      showToastMessage('Folder created successfully.', 'success')
     }
   } catch (e) {
     console.error('Failed to create folder:', e)
-    showToastMessage('创建文件夹失败: ' + (e.response?.data?.error || e.message), 'error')
+    showToastMessage(getUiErrorMessage(e, 'Failed to create folder.'), 'error')
   }
 }
 
@@ -2004,7 +2103,7 @@ const downloadContextItem = () => {
 
 const renameContextItem = async () => {
   if (!contextMenuItem.value) return
-  const newName = prompt('请输入新名称:', contextMenuItem.value.name)
+  const newName = prompt('Enter a new name:', contextMenuItem.value.name)
   if (!newName || newName === contextMenuItem.value.name) {
     showDataContextMenu.value = false
     return
@@ -2015,16 +2114,16 @@ const renameContextItem = async () => {
       name: newName.trim()
     })
     contextMenuItem.value.name = newName.trim()
-    showToastMessage('重命名成功', 'success')
+    showToastMessage('Renamed successfully.', 'success')
   } catch (e) {
-    showToastMessage('重命名失败: ' + (e.response?.data?.error || e.message), 'error')
+    showToastMessage(getUiErrorMessage(e, 'Failed to rename item.'), 'error')
   }
   showDataContextMenu.value = false
 }
 
 const deleteContextItem = async () => {
   if (!contextMenuItem.value) return
-  if (!confirm(`确定要删除 "${contextMenuItem.value.name}" 吗？`)) {
+  if (!confirm(`Delete "${contextMenuItem.value.name}"?`)) {
     showDataContextMenu.value = false
     return
   }
@@ -2035,9 +2134,9 @@ const deleteContextItem = async () => {
     if (index > -1) {
       myDataList.value.splice(index, 1)
     }
-    showToastMessage('删除成功', 'success')
+    showToastMessage('Deleted successfully.', 'success')
   } catch (e) {
-    showToastMessage('删除失败: ' + (e.response?.data?.error || e.message), 'error')
+    showToastMessage(getUiErrorMessage(e, 'Failed to delete item.'), 'error')
   }
   showDataContextMenu.value = false
 }
@@ -2171,11 +2270,11 @@ const forkSingleItem = async (item) => {
       forkedDataIds.value.push(item.id)
       // 重新加载数据列表
       loadMyDataList()
-      showToastMessage(`成功 Fork: ${item.name}`, 'success')
+      showToastMessage(`Forked: ${item.name}`, 'success')
     }
   } catch (e) {
     console.error('Fork failed:', e)
-    showToastMessage('Fork 失败: ' + (e.response?.data?.error || e.message), 'error')
+    showToastMessage(getUiErrorMessage(e, 'Failed to fork data item.'), 'error')
   }
 }
 
@@ -2223,9 +2322,9 @@ const forkSelectedData = async () => {
   loadMyDataList()
   
   if (successCount > 0) {
-    showToastMessage(`成功 Fork ${successCount} 个数据${failCount > 0 ? `，失败 ${failCount} 个` : ''}`, 'success')
+    showToastMessage(`Forked ${successCount} item${successCount > 1 ? 's' : ''}${failCount > 0 ? `, ${failCount} failed` : ''}.`, 'success')
   } else if (failCount > 0) {
-    showToastMessage(`Fork 失败 ${failCount} 个数据`, 'error')
+    showToastMessage(`${failCount} item${failCount > 1 ? 's failed' : ' failed'} to fork.`, 'error')
   }
   
   showForkDataModal.value = false
@@ -2314,7 +2413,7 @@ const removeUploadFile = () => {
 // 上传数据
 const uploadData = async () => {
   if (!uploadFile.value) {
-    showToastMessage('请选择要上传的文件', 'warning')
+    showToastMessage('Please choose a file to upload.', 'warning')
     return
   }
   
@@ -2356,14 +2455,14 @@ const uploadData = async () => {
       }
       myDataList.value.unshift(newData)
       
-      showToastMessage('上传成功！', 'success')
+      showToastMessage('Upload completed successfully.', 'success')
       closeDataUploader()
     } else {
-      throw new Error(res.data.error || '上传失败')
+      throw new Error(res.data.error || 'Upload failed.')
     }
   } catch (e) {
     console.error('Upload failed:', e)
-    showToastMessage('上传失败: ' + (e.response?.data?.error || e.message), 'error')
+    showToastMessage(getUiErrorMessage(e, 'Upload failed.'), 'error')
   } finally {
     isUploading.value = false
     uploadProgress.value = 0
@@ -2375,18 +2474,18 @@ const downloadData = (data) => {
   if (data.url) {
     window.open(data.url, '_blank')
   } else {
-    showToastMessage('下载链接不可用', 'warning')
+    showToastMessage('Download link is unavailable.', 'warning')
   }
 }
 
 // 从我的数据中移除
 const removeFromMyData = async (data) => {
-  if (!confirm(`确定要删除 "${data.name}" 吗？`)) return
+  if (!confirm(`Delete "${data.name}"?`)) return
   try {
     await authAxios().delete(`/api/jupyter/my-data/${data.id}`)
     myDataList.value = myDataList.value.filter(d => d.id !== data.id)
   } catch (e) {
-    alert('删除失败: ' + (e.response?.data?.error || e.message))
+    alert(getUiErrorMessage(e, 'Failed to delete data item.'))
   }
 }
 
@@ -2469,18 +2568,18 @@ const addToMyModels = async (model) => {
     await authAxios().post('/api/jupyter/my-models', { model })
     myModels.value.push(model)
   } catch (e) {
-    alert('添加失败: ' + (e.response?.data?.error || e.message))
+    alert(getUiErrorMessage(e, 'Failed to add model.'))
   }
 }
 
 // 从我的模型移除
 const removeFromMyModels = async (model) => {
-  if (!confirm(`确定要从列表中移除 "${model.name}" 吗？`)) return
+  if (!confirm(`Remove "${model.name}" from this list?`)) return
   try {
     await authAxios().delete(`/api/jupyter/my-models/${model.id}`)
     myModels.value = myModels.value.filter(m => m.id !== model.id)
   } catch (e) {
-    alert('移除失败: ' + (e.response?.data?.error || e.message))
+    alert(getUiErrorMessage(e, 'Failed to remove model.'))
   }
 }
 
@@ -2541,18 +2640,18 @@ const addToMyDataMethods = async (method) => {
     await authAxios().post('/api/jupyter/my-datamethods', { dataMethod: method })
     myDataMethods.value.push(method)
   } catch (e) {
-    alert('添加失败: ' + (e.response?.data?.error || e.message))
+    alert(getUiErrorMessage(e, 'Failed to add data method.'))
   }
 }
 
 // 从我的数据方法移除
 const removeFromMyDataMethods = async (method) => {
-  if (!confirm(`确定要从列表中移除 "${method.name}" 吗？`)) return
+  if (!confirm(`Remove "${method.name}" from this list?`)) return
   try {
     await authAxios().delete(`/api/jupyter/my-datamethods/${method.id}`)
     myDataMethods.value = myDataMethods.value.filter(m => m.id !== method.id)
   } catch (e) {
-    alert('移除失败: ' + (e.response?.data?.error || e.message))
+    alert(getUiErrorMessage(e, 'Failed to remove data method.'))
   }
 }
 
@@ -2564,7 +2663,7 @@ const runDataMethod = (method) => {
 // 复制 token
 const copyToken = () => {
   navigator.clipboard.writeText(jupyterToken.value)
-  alert('Token 已复制到剪贴板')
+  alert('Token copied to clipboard.')
 }
 
 // 格式化函数
@@ -2576,7 +2675,7 @@ const formatSize = (bytes) => {
 
 const formatDate = (dateStr) => {
   const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-CN') + ' ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  return date.toLocaleDateString('en-US') + ' ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 }
 
 // 初始化
@@ -2591,7 +2690,7 @@ onMounted(async () => {
   }
 
   if (typeof oauthError === 'string' && oauthError) {
-    showToastMessage(oauthErrorMessages[oauthError] || '第三方登录失败，请重试', 'error', 5000)
+    showToastMessage(oauthErrorMessages[oauthError] || 'Third-party sign-in failed. Please try again.', 'error', 5000)
     router.replace('/jupyter')
     return
   }
@@ -6438,5 +6537,1070 @@ onMounted(async () => {
   color: #67c23a;
   min-width: 45px;
   text-align: right;
+}
+
+/* ========== OpenGeoLab-Jupyter Visual Refresh ========== */
+.jupyter-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(213, 227, 255, 0.5), transparent 32%),
+    linear-gradient(180deg, #f8f9fa 0%, #eef1f4 100%);
+  color: var(--primary-strong);
+}
+
+.jupyter-page .jupyter-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  min-height: 66px;
+  padding: 0.75rem 1.25rem;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 18px 34px rgba(var(--primary-rgb), 0.06);
+}
+
+.jupyter-page .nav-left,
+.jupyter-page .nav-right {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.jupyter-page .brand-wordmark {
+  color: var(--primary-strong);
+  text-decoration: none;
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.jupyter-page .back-home-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 0.95rem;
+  border-radius: 999px;
+  background: rgba(243, 244, 245, 0.95);
+  color: var(--primary-strong);
+  text-decoration: none;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
+}
+
+.jupyter-page .workspace-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  object-fit: cover;
+  box-shadow: 0 12px 20px rgba(var(--primary-rgb), 0.12);
+}
+
+.jupyter-page .icon-history { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 3-6.708'/%3E%3Cpath d='M3 4v5h5'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E"); }
+.jupyter-page .icon-folder-shared { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z'/%3E%3Cpath d='M16 19v-1a3 3 0 0 0-6 0v1'/%3E%3Ccircle cx='13' cy='12' r='2'/%3E%3C/svg%3E"); }
+.jupyter-page .icon-group { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9.5' cy='7' r='3'/%3E%3Cpath d='M22 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath d='M16 4.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E"); }
+.jupyter-page .icon-library { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 2v6h6'/%3E%3Cpath d='M8 13h8'/%3E%3Cpath d='M8 17h5'/%3E%3C/svg%3E"); }
+.jupyter-page .icon-model { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l8 4.5v9L12 21 4 16.5v-9L12 3z'/%3E%3Cpath d='M12 12l8-4.5'/%3E%3Cpath d='M12 12v9'/%3E%3Cpath d='M12 12L4 7.5'/%3E%3C/svg%3E"); }
+.jupyter-page .icon-database { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='12' cy='5' rx='7' ry='3'/%3E%3Cpath d='M5 5v14c0 1.66 3.13 3 7 3s7-1.34 7-3V5'/%3E%3Cpath d='M5 12c0 1.66 3.13 3 7 3s7-1.34 7-3'/%3E%3C/svg%3E"); }
+.jupyter-page .icon-method { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 7h16'/%3E%3Cpath d='M4 12h10'/%3E%3Cpath d='M4 17h13'/%3E%3C/svg%3E"); }
+.jupyter-page .icon-settings { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 4.39 16.96l.06-.06A1.65 1.65 0 0 0 4.78 15a1.65 1.65 0 0 0-1.51-1H3.18a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 7.22 4.3l.06.06A1.65 1.65 0 0 0 9.1 4.03 1.65 1.65 0 0 0 10.1 2.52V2.4a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06A2 2 0 1 1 19.8 7.1l-.06.06A1.65 1.65 0 0 0 19.41 9c.2.63.8 1.05 1.46 1.05H21a2 2 0 1 1 0 4h-.09c-.66 0-1.25.42-1.51 1.05z'/%3E%3C/svg%3E"); }
+.jupyter-page .icon-signout { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/%3E%3Cpath d='M16 17l5-5-5-5'/%3E%3Cpath d='M21 12H9'/%3E%3C/svg%3E"); }
+.jupyter-page .icon-create { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z'/%3E%3Cpath d='M12 10v6'/%3E%3Cpath d='M9 13h6'/%3E%3C/svg%3E"); }
+.jupyter-page .icon-upload { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 2v6h6'/%3E%3Cpath d='M12 18v-6'/%3E%3Cpath d='M9.5 14.5 12 12l2.5 2.5'/%3E%3C/svg%3E"); }
+.jupyter-page .icon-notebook { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 6h12'/%3E%3Cpath d='M8 12h12'/%3E%3Cpath d='M8 18h12'/%3E%3Cpath d='M4 6h.01'/%3E%3Cpath d='M4 12h.01'/%3E%3Cpath d='M4 18h.01'/%3E%3C/svg%3E"); }
+
+.jupyter-page .nav-icon,
+.jupyter-page .logout-btn .nav-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  background: currentColor;
+  mask: var(--icon) center / contain no-repeat;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+}
+
+.jupyter-page .action-icon,
+.jupyter-page .resource-snippet-icon {
+  position: relative;
+}
+
+.jupyter-page .action-icon::before,
+.jupyter-page .resource-snippet-icon::before,
+.jupyter-page .project-open-btn::before {
+  content: '';
+  display: block;
+  background: currentColor;
+  mask: var(--icon) center / contain no-repeat;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+}
+
+.jupyter-page .project-open-btn {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2'/%3E%3Cpath d='M8 9l2 3-2 3'/%3E%3Cpath d='M12 15h4'/%3E%3C/svg%3E");
+}
+
+.jupyter-page .resource-snippet-icon.type-folder { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z'/%3E%3C/svg%3E"); }
+.jupyter-page .resource-snippet-icon.type-dataset { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='12' cy='5' rx='7' ry='3'/%3E%3Cpath d='M5 5v14c0 1.66 3.13 3 7 3s7-1.34 7-3V5'/%3E%3Cpath d='M5 12c0 1.66 3.13 3 7 3s7-1.34 7-3'/%3E%3C/svg%3E"); }
+.jupyter-page .resource-snippet-icon.type-model { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l8 4.5v9L12 21 4 16.5v-9L12 3z'/%3E%3Cpath d='M12 12l8-4.5'/%3E%3Cpath d='M12 12v9'/%3E%3Cpath d='M12 12L4 7.5'/%3E%3C/svg%3E"); }
+.jupyter-page .resource-snippet-icon.type-method { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 7h16'/%3E%3Cpath d='M4 12h10'/%3E%3Cpath d='M4 17h13'/%3E%3C/svg%3E"); }
+
+.jupyter-page .dashboard-layout {
+  display: grid;
+  grid-template-columns: 258px minmax(0, 1fr);
+  min-height: calc(100vh - 66px);
+}
+
+.jupyter-page .sidebar {
+  position: sticky;
+  top: 66px;
+  height: calc(100vh - 66px);
+  padding: 1.45rem 0 1.15rem;
+  background: #e1e3e4;
+  border-right: none;
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.45);
+}
+
+.jupyter-page .sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0 1.5rem;
+  background: transparent;
+  margin-bottom: 1.2rem;
+}
+
+.jupyter-page .user-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: none;
+}
+
+.jupyter-page .user-name {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--primary-strong);
+}
+
+.jupyter-page .user-username {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.jupyter-page .sidebar-nav {
+  display: block;
+  overflow-y: auto;
+}
+
+.jupyter-page .nav-section {
+  margin-bottom: 1.5rem;
+}
+
+.jupyter-page .nav-section-title {
+  padding: 0 1.5rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.jupyter-page .nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
+  min-height: 56px;
+  padding: 0 1.5rem;
+  border-radius: 0;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.jupyter-page .nav-item:hover {
+  background: rgba(255, 255, 255, 0.52);
+  color: var(--primary-strong);
+}
+
+.jupyter-page .nav-item.active {
+  background: rgba(255, 255, 255, 0.98);
+  color: #006876;
+  font-weight: 700;
+}
+
+.jupyter-page .nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 0 999px 999px 0;
+  background: #006876;
+}
+
+.jupyter-page .sidebar-footer {
+  margin-top: auto;
+  padding: 0 1.5rem;
+}
+
+.jupyter-page .logout-btn {
+  width: 100%;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(0, 30, 64, 0.96), rgba(0, 51, 102, 0.92));
+  color: white;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(var(--primary-rgb), 0.14);
+}
+
+.jupyter-page .main-content {
+  padding: 2.15rem 2rem 2.6rem;
+  background: #f3f4f5;
+}
+
+.jupyter-page .content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.jupyter-page .content-header.recent-mode {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.jupyter-page .content-header .page-title {
+  margin: 0;
+  font-family: 'Manrope', sans-serif;
+  font-size: clamp(2.3rem, 3.4vw, 3.45rem);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  color: var(--primary-strong);
+}
+
+.jupyter-page .page-subtitle {
+  margin: 0.85rem 0 0;
+  max-width: 760px;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.jupyter-page .header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.jupyter-page .runtime-summary-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 72px;
+  padding: 0 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.06);
+}
+
+.jupyter-page .runtime-summary-item {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 118px;
+}
+
+.jupyter-page .runtime-summary-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.jupyter-page .runtime-summary-item strong {
+  font-size: 1.02rem;
+  color: var(--primary-strong);
+}
+
+.jupyter-page .runtime-summary-divider {
+  width: 1px;
+  height: 44px;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.jupyter-page .search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: min(100%, 280px);
+  min-height: 52px;
+  padding: 0 1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 10px 18px rgba(var(--primary-rgb), 0.05);
+}
+
+.jupyter-page .search-box input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--primary-strong);
+}
+
+.jupyter-page .header-btn,
+.jupyter-page .add-btn,
+.jupyter-page .launch-jupyter-btn,
+.jupyter-page .confirm-btn,
+.jupyter-page .btn-create {
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--primary-strong), var(--primary-soft));
+  color: white;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 16px 24px rgba(var(--primary-rgb), 0.14);
+}
+
+.jupyter-page .header-btn {
+  min-height: 52px;
+  padding: 0 1.1rem;
+}
+
+.jupyter-page .content-body,
+.jupyter-page .recent-section,
+.jupyter-page .projects-table-wrapper,
+.jupyter-page .shared-projects-section,
+.jupyter-page .environments-panel,
+.jupyter-page .mymodel-panel,
+.jupyter-page .mydatamethod-panel,
+.jupyter-page .mydata-panel {
+  border-radius: 28px;
+}
+
+.jupyter-page .recent-top-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 310px;
+  gap: 1.7rem;
+  margin-top: 0;
+}
+
+.jupyter-page .recent-section,
+.jupyter-page .projects-table-wrapper,
+.jupyter-page .resource-list,
+.jupyter-page .shared-projects-section,
+.jupyter-page .environments-panel,
+.jupyter-page .selector-modal,
+.jupyter-page .modal-content,
+.jupyter-page .fork-data-modal {
+  padding: 1.4rem;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 30px rgba(var(--primary-rgb), 0.06);
+}
+
+.jupyter-page .section-title,
+.jupyter-page .env-panel-title {
+  margin: 0 0 1rem;
+  font-family: 'Manrope', sans-serif;
+  font-size: 1.18rem;
+  font-weight: 800;
+  color: var(--primary-strong);
+  letter-spacing: -0.03em;
+}
+
+.jupyter-page .action-tile {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  min-height: 164px;
+  padding: 1.6rem;
+  border: none;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  color: var(--primary-strong);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(var(--primary-rgb), 0.06);
+}
+
+.jupyter-page .action-tile:hover {
+  transform: translateY(-2px);
+  background: rgba(213, 227, 255, 0.34);
+  box-shadow: 0 10px 22px rgba(var(--primary-rgb), 0.08);
+}
+
+.jupyter-page .action-icon {
+  width: 56px;
+  height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: #d9eef8;
+  color: var(--primary-strong);
+}
+
+.jupyter-page .action-icon::before {
+  width: 28px;
+  height: 28px;
+}
+
+.jupyter-page .action-tile strong {
+  font-family: 'Manrope', sans-serif;
+  font-size: 1.02rem;
+  font-weight: 800;
+}
+
+.jupyter-page .action-tile span:last-child {
+  color: #6b778b;
+  font-size: 0.9rem;
+}
+
+.jupyter-page .usage-tile {
+  padding: 1.6rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 4px 16px rgba(var(--primary-rgb), 0.06);
+}
+
+.jupyter-page .usage-label {
+  margin: 0 0 1rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.jupyter-page .usage-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.75rem;
+  color: var(--primary-strong);
+  font-weight: 700;
+}
+
+.jupyter-page .usage-bar {
+  width: 100%;
+  height: 8px;
+  margin-top: 0.6rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(213, 227, 255, 0.55);
+}
+
+.jupyter-page .usage-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent-color);
+}
+
+.jupyter-page .usage-bar.blue span {
+  background: var(--primary-strong);
+}
+
+.jupyter-page .recent-projects-section,
+.jupyter-page .recent-resources-card,
+.jupyter-page .insights-card,
+.jupyter-page .shared-project-card,
+.jupyter-page .env-card-new,
+.jupyter-page .resource-card {
+  border: none;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16px 26px rgba(var(--primary-rgb), 0.05);
+}
+
+.jupyter-page .recent-projects-section,
+.jupyter-page .recent-resources-card,
+.jupyter-page .insights-card {
+  padding: 1.6rem;
+  margin-top: 1.7rem;
+}
+
+.jupyter-page .recent-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.jupyter-page .section-link {
+  border: none;
+  background: transparent;
+  color: #006876;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.jupyter-page .project-activity-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.jupyter-page .project-activity-card {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.4rem;
+  padding: 1.35rem 1.45rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.05);
+}
+
+.jupyter-page .project-cover {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+}
+
+.jupyter-page .project-cover.tone-0 {
+  background: linear-gradient(135deg, #0d253c, #1c7a87, #ef9f5a);
+}
+
+.jupyter-page .project-cover.tone-1 {
+  background: linear-gradient(135deg, #14253b, #203d49, #4b5a58);
+}
+
+.jupyter-page .project-cover.tone-2 {
+  background: linear-gradient(135deg, #23324a, #1b7a7c, #84d6d2);
+}
+
+.jupyter-page .project-activity-title {
+  margin: 0;
+  font-family: 'Manrope', sans-serif;
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: var(--primary-strong);
+}
+
+.jupyter-page .project-activity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.95rem;
+  margin-top: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.jupyter-page .project-activity-meta span:not(.project-state-badge) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.jupyter-page .project-state-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 0.62rem;
+  border-radius: 6px;
+  background: rgba(17, 182, 205, 0.18);
+  color: var(--accent-color);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.jupyter-page .project-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 46px;
+  padding: 0 1.3rem;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.jupyter-page .project-open-btn::before {
+  width: 20px;
+  height: 20px;
+}
+
+.jupyter-page .project-open-btn.primary {
+  background: linear-gradient(135deg, var(--primary-strong), var(--primary-soft));
+  color: white;
+  box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.14);
+}
+
+.jupyter-page .project-open-btn.ghost {
+  background: #eceef1;
+  color: var(--primary-strong);
+  box-shadow: none;
+}
+
+.jupyter-page .recent-bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 520px);
+  gap: 1.7rem;
+}
+
+.jupyter-page .resource-snippet-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.jupyter-page .resource-snippet-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.2rem 0;
+}
+
+.jupyter-page .resource-snippet-item + .resource-snippet-item {
+  border-top: none;
+}
+
+.jupyter-page .resource-snippet-icon {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(var(--accent-rgb), 0.12);
+  color: #006876;
+}
+
+.jupyter-page .resource-snippet-icon::before {
+  width: 18px;
+  height: 18px;
+}
+
+.jupyter-page .resource-snippet-main strong {
+  display: block;
+  color: var(--primary-strong);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.jupyter-page .resource-snippet-main span,
+.jupyter-page .resource-snippet-side,
+.jupyter-page .insights-card p {
+  color: var(--text-secondary);
+}
+
+.jupyter-page .resource-snippet-side {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.jupyter-page .recent-resources-card {
+  min-height: 310px;
+}
+
+.jupyter-page .insights-card {
+  background: linear-gradient(135deg, #092246, #10345e);
+  color: white;
+  box-shadow: 0 10px 24px rgba(9, 34, 70, 0.18);
+}
+
+.jupyter-page .insights-card .section-title {
+  color: white;
+}
+
+.jupyter-page .insight-avatars {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1.25rem;
+}
+
+.jupyter-page .insight-avatars span,
+.jupyter-page .insight-avatars em {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.jupyter-page .insight-action {
+  width: 100%;
+  min-height: 56px;
+  margin-top: 1.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.jupyter-page .shared-project-card:hover,
+.jupyter-page .shared-project-card:hover,
+.jupyter-page .env-card-new:hover,
+.jupyter-page .resource-card:hover {
+  background: rgba(213, 227, 255, 0.56);
+  transform: translateY(-2px);
+}
+
+.jupyter-page .project-name,
+.jupyter-page .project-name-text,
+.jupyter-page .resource-name,
+.jupyter-page .env-card-title {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  color: var(--primary-strong);
+}
+
+.jupyter-page .project-meta,
+.jupyter-page .resource-meta,
+.jupyter-page .env-card-desc,
+.jupyter-page .panel-intro p,
+.jupyter-page .empty-hint {
+  color: var(--text-secondary);
+}
+
+.jupyter-page .projects-table-wrapper,
+.jupyter-page .shared-projects-section,
+.jupyter-page .environments-panel,
+.jupyter-page .resource-list,
+.jupyter-page .netdisk-style {
+  background: rgba(243, 244, 245, 0.88);
+}
+
+.jupyter-page .projects-table-new {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 0.7rem;
+}
+
+.jupyter-page .projects-table-new th {
+  padding: 0 1rem 0.6rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.jupyter-page .projects-table-new td {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.jupyter-page .projects-table-new td:first-child {
+  border-top-left-radius: 18px;
+  border-bottom-left-radius: 18px;
+}
+
+.jupyter-page .projects-table-new td:last-child {
+  border-top-right-radius: 18px;
+  border-bottom-right-radius: 18px;
+}
+
+.jupyter-page .project-row {
+  transition: transform 0.2s ease;
+}
+
+.jupyter-page .project-row:hover {
+  transform: translateY(-1px);
+}
+
+.jupyter-page .panel-toolbar {
+  margin-bottom: 1rem;
+}
+
+.jupyter-page .resource-grid,
+.jupyter-page .shared-projects-grid,
+.jupyter-page .env-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.jupyter-page .resource-card,
+.jupyter-page .shared-project-card,
+.jupyter-page .env-card-new {
+  padding: 1.2rem;
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.jupyter-page .netdisk-toolbar,
+.jupyter-page .shared-search-bar,
+.jupyter-page .selector-search,
+.jupyter-page .fork-search-bar {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.jupyter-page .toolbar-btn,
+.jupyter-page .selector-search button,
+.jupyter-page .fork-search-bar button,
+.jupyter-page .btn-cancel,
+.jupyter-page .cancel-btn {
+  min-height: 44px;
+  padding: 0 1rem;
+  border: none;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--primary-strong);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.jupyter-page .toolbar-btn.primary,
+.jupyter-page .confirm-btn,
+.jupyter-page .fork-single-btn,
+.jupyter-page .action-btn.fork {
+  background: linear-gradient(135deg, var(--primary-strong), var(--primary-soft));
+  color: white;
+}
+
+.jupyter-page .toolbar-btn.upload {
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent-color);
+}
+
+.jupyter-page .netdisk-content,
+.jupyter-page .fork-data-list {
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 1rem;
+}
+
+.jupyter-page .netdisk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.9rem;
+}
+
+.jupyter-page .netdisk-item {
+  padding: 1rem;
+  border: none;
+  border-radius: 20px;
+  background: rgba(248, 249, 250, 0.96);
+  box-shadow: 0 14px 24px rgba(var(--primary-rgb), 0.05);
+}
+
+.jupyter-page .netdisk-item.selected {
+  background: rgba(213, 227, 255, 0.72);
+}
+
+.jupyter-page .env-panel-desc {
+  margin: -0.45rem 0 1.2rem;
+  color: var(--text-secondary);
+}
+
+.jupyter-page .env-card-new.selected {
+  background: rgba(213, 227, 255, 0.82);
+  box-shadow: 0 20px 32px rgba(var(--primary-rgb), 0.1);
+}
+
+.jupyter-page .env-launch-section {
+  margin-top: 1.2rem;
+}
+
+.jupyter-page .launch-jupyter-btn {
+  min-height: 52px;
+  padding: 0 1.2rem;
+}
+
+.jupyter-page .modal-overlay {
+  background: rgba(0, 30, 64, 0.24);
+  backdrop-filter: blur(8px);
+}
+
+.jupyter-page .modal-content,
+.jupyter-page .fork-data-modal {
+  border: none;
+  border-radius: 28px;
+}
+
+.jupyter-page .modal-header,
+.jupyter-page .modal-footer {
+  border: none;
+}
+
+.jupyter-page .modal-header h2,
+.jupyter-page .modal-header h3 {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  color: var(--primary-strong);
+}
+
+.jupyter-page .form-group input,
+.jupyter-page .form-group textarea,
+.jupyter-page .selector-search input,
+.jupyter-page .fork-search-bar input,
+.jupyter-page .shared-search-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.8rem 0.95rem;
+  border: none;
+  border-radius: 16px;
+  background: rgba(243, 244, 245, 0.95);
+  color: var(--primary-strong);
+  outline: none;
+}
+
+.jupyter-page .form-group textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.jupyter-page .selector-item,
+.jupyter-page .fork-item {
+  border: none;
+  border-radius: 18px;
+  background: rgba(248, 249, 250, 0.96);
+}
+
+.jupyter-page .login-container {
+  min-height: calc(100vh - 74px);
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+}
+
+.jupyter-page .login-card {
+  width: min(100%, 560px);
+  padding: 2rem;
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 28px 44px rgba(var(--primary-rgb), 0.1);
+}
+
+.jupyter-page .login-header h1 {
+  margin: 0;
+  font-family: 'Manrope', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--primary-strong);
+}
+
+.jupyter-page .login-header p,
+.jupyter-page .login-hint {
+  color: var(--text-secondary);
+}
+
+.jupyter-page .login-input {
+  min-height: 50px;
+  border: none;
+  border-radius: 16px;
+  background: rgba(243, 244, 245, 0.96);
+}
+
+.jupyter-page .opengms-login-btn,
+.jupyter-page .social-login-btn {
+  min-height: 50px;
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 14px 22px rgba(var(--primary-rgb), 0.08);
+}
+
+.jupyter-page .opengms-login-btn {
+  background: linear-gradient(135deg, var(--primary-strong), var(--primary-soft));
+  color: white;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+}
+
+@media (max-width: 1200px) {
+  .jupyter-page .recent-top-grid,
+  .jupyter-page .recent-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 960px) {
+  .jupyter-page .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .jupyter-page .sidebar {
+    position: static;
+    height: auto;
+  }
+
+  .jupyter-page .content-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jupyter-page .header-right {
+    justify-content: stretch;
+  }
+}
+
+@media (max-width: 720px) {
+  .jupyter-page .jupyter-nav {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .jupyter-page .main-content {
+    padding: 0.85rem;
+  }
+
+  .jupyter-page .resource-grid,
+  .jupyter-page .shared-projects-grid,
+  .jupyter-page .env-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .jupyter-page .project-activity-card {
+    grid-template-columns: 1fr;
+  }
+
+  .jupyter-page .project-open-btn {
+    width: 100%;
+  }
 }
 </style>

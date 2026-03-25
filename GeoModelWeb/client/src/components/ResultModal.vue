@@ -148,8 +148,8 @@ const formatOutput = (output) => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(7, 16, 31, 0.58);
+  backdrop-filter: blur(10px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -158,26 +158,27 @@ const formatOutput = (output) => {
 }
 
 .result-modal-content {
-  background-color: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.99);
+  border: 1px solid rgba(0, 30, 64, 0.08);
+  border-radius: 20px;
   width: 100%;
   max-width: 700px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 32px 80px rgba(0, 30, 64, 0.22);
+  overflow: hidden;
   animation: slideUp 0.3s ease;
 }
 
 .modal-header {
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--nav-bg);
-  border-radius: 12px 12px 0 0;
+  background: linear-gradient(135deg, var(--primary-strong), var(--primary-soft));
+  border-radius: 20px 20px 0 0;
 }
 
 .modal-header h3 {
@@ -206,6 +207,7 @@ const formatOutput = (output) => {
   padding: 1.5rem;
   overflow-y: auto;
   flex: 1;
+  background: var(--surface-card);
 }
 
 .success-section, .error-section {
@@ -335,8 +337,8 @@ const formatOutput = (output) => {
   border-top: 1px solid var(--border-light);
   display: flex;
   justify-content: flex-end;
-  background: var(--bg-color);
-  border-radius: 0 0 12px 12px;
+  background: #f5f7fb;
+  border-radius: 0 0 20px 20px;
 }
 
 .close-footer-btn {

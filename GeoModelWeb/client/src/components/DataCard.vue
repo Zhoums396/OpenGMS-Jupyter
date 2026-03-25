@@ -1,25 +1,6 @@
 <template>
-  <article class="data-list-item" @click="handleClick">
-    <header class="data-topline">
-      <div class="data-heading">
-        <h3 :title="data.name">{{ data.name }}</h3>
-        <div class="badge-row">
-          <span v-if="headerBadge" class="chip geo-chip" :class="headerBadge.className">
-            {{ headerBadge.label }}
-          </span>
-          <span v-if="primaryFormat" class="chip neutral-chip">{{ primaryFormat }}</span>
-          <span v-if="data.publicBoolean" class="chip public-chip">{{ $t('dataCard.public') }}</span>
-        </div>
-      </div>
-
-      <div class="headline-metrics">
-        <span class="headline-pill">{{ resolvedSize }}</span>
-        <span class="headline-pill">{{ fileCount }} {{ $t('dataCard.files') }}</span>
-        <span class="headline-pill">{{ formatCompactNumber(normalizedViews) }} {{ $t('dataCard.views') }}</span>
-      </div>
-    </header>
-
-    <div class="data-body">
+  <article class="data-list-item">
+    <div class="data-card-shell">
       <div class="media-column">
         <img
           v-if="activePreviewUrl"
@@ -34,53 +15,51 @@
       </div>
 
       <div class="summary-column">
+        <div class="title-row">
+          <h3 :title="data.name">{{ data.name }}</h3>
+          <div class="status-row">
+            <span v-if="headerBadge" class="chip geo-chip" :class="headerBadge.className">
+              {{ headerBadge.label }}
+            </span>
+            <span v-if="primaryFormat" class="chip neutral-chip">{{ primaryFormat }}</span>
+            <span class="chip access-chip" :class="{ restricted: !data.publicBoolean }">
+              {{ accessLabel }}
+            </span>
+          </div>
+        </div>
+
         <p class="description" :title="resolvedDescription">
           {{ truncate(resolvedDescription, 220) }}
         </p>
 
-        <div class="meta-line" v-if="themeTags.length">
-          <span class="meta-label">{{ $t('dataCard.themes') }}</span>
-          <div class="tag-row">
-            <span v-for="tag in themeTags.slice(0, 2)" :key="`theme-${tag}`" class="tag-chip theme-tag">
-              {{ tag }}
-            </span>
-          </div>
+        <div class="metric-row">
+          <span class="metric-item">{{ resolvedSize }}</span>
+          <span class="metric-item">{{ fileCount }} {{ $t('dataCard.files') }}</span>
+          <span class="metric-item">{{ formatCompactNumber(normalizedViews) }} {{ $t('dataCard.views') }}</span>
+          <span class="metric-item">{{ formatTime(data.createTime) }}</span>
+          <span v-if="compactAuthor" class="metric-item">{{ compactAuthor }}</span>
         </div>
 
-        <div class="meta-line" v-if="domainTags.length">
-          <span class="meta-label">{{ $t('dataCard.domains') }}</span>
-          <div class="tag-row">
-            <span v-for="tag in domainTags.slice(0, 4)" :key="`domain-${tag}`" class="tag-chip domain-tag">
-              {{ tag }}
-            </span>
-          </div>
+        <div v-if="visibleTopicTags.length" class="tag-row">
+          <span
+            v-for="tag in visibleTopicTags"
+            :key="tag"
+            class="tag-chip"
+          >
+            {{ tag }}
+          </span>
         </div>
       </div>
 
       <aside class="action-column">
-        <div class="side-stat">
-          <span class="stat-label">{{ $t('dataCard.access') }}</span>
-          <strong>{{ data.publicBoolean ? $t('dataCard.public') : $t('dataCard.restricted') }}</strong>
-        </div>
-        <button class="download-btn" @click.stop="handleDownload">
+        <button class="primary-btn" @click.stop="handleDownload">
           {{ $t('dataCard.download') }}
+        </button>
+        <button class="ghost-btn" @click.stop="handleClick">
+          Details
         </button>
       </aside>
     </div>
-
-    <footer class="data-footer">
-      <div class="footer-meta">
-        <span class="author-avatar">{{ authorInitial }}</span>
-        <span class="author-text" :title="data.userEmail || $t('dataCard.unknown')">
-          {{ compactAuthor }}
-        </span>
-      </div>
-
-      <div class="footer-meta">
-        <span class="footer-chip">{{ data.publicBoolean ? $t('dataCard.public') : $t('dataCard.restricted') }}</span>
-        <span class="footer-date">{{ formatTime(data.createTime) }}</span>
-      </div>
-    </footer>
   </article>
 </template>
 
@@ -134,15 +113,13 @@ const domainTags = computed(() => splitTags(props.data.normalTags))
 
 const compactAuthor = computed(() => {
   const value = String(props.data.userEmail || '').trim()
-  if (!value) return t('dataCard.unknown')
+  if (!value) return ''
   if (value.length <= 28) return value
   return `${value.slice(0, 14)}...${value.slice(-8)}`
 })
 
-const authorInitial = computed(() => {
-  const value = String(props.data.userEmail || '').trim()
-  return value ? value[0].toUpperCase() : 'U'
-})
+const accessLabel = computed(() => (props.data.publicBoolean ? t('dataCard.public') : t('dataCard.restricted')))
+const visibleTopicTags = computed(() => [...themeTags.value, ...domainTags.value].slice(0, 3))
 
 const normalizePreviewCandidate = (value) => {
   const text = String(value || '').trim()
@@ -322,71 +299,64 @@ const handleDownload = () => emit('download', props.data)
 
 <style scoped>
 .data-list-item {
-  background: #ffffff;
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-  cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background: rgba(255, 255, 255, 0.98);
+  border: none;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.06);
+  transition: background-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
 }
 
 .data-list-item:hover {
-  border-color: rgba(var(--accent-rgb), 0.45);
-  box-shadow: var(--shadow-md);
+  background: rgba(213, 227, 255, 0.5);
+  box-shadow: 0 14px 30px rgba(var(--primary-rgb), 0.08);
+  transform: translateY(-2px);
 }
 
-.data-topline,
-.data-body,
-.data-footer {
-  padding-left: 1.35rem;
-  padding-right: 1.35rem;
+.data-card-shell {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 148px;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 1.5rem;
 }
 
-.data-topline {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  padding-top: 1.2rem;
+.summary-column {
+  min-width: 0;
 }
 
-.data-heading h3 {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 1.42rem;
-  line-height: 1.18;
-  letter-spacing: -0.02em;
-}
-
-.badge-row,
-.headline-metrics,
+.title-row,
+.status-row,
+.metric-row,
 .tag-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
+  gap: 0.55rem;
 }
 
-.badge-row {
-  margin-top: 0.7rem;
+.title-row {
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.summary-column h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: 'Manrope', sans-serif;
+  font-size: 1.55rem;
+  line-height: 1.14;
+  letter-spacing: -0.03em;
 }
 
 .chip,
-.headline-pill,
-.tag-chip,
-.footer-chip {
+.tag-chip {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  padding: 0.32rem 0.72rem;
-  font-size: 0.74rem;
-  font-weight: 600;
-}
-
-.neutral-chip,
-.headline-pill {
-  background: rgba(15, 23, 42, 0.05);
-  color: var(--text-secondary);
+  border-radius: 6px;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 800;
 }
 
 .geo-chip.vector {
@@ -394,14 +364,12 @@ const handleDownload = () => emit('download', props.data)
   color: var(--success-color);
 }
 
-.geo-chip.raster,
-.domain-tag {
+.geo-chip.raster {
   background: rgba(var(--accent-rgb), 0.08);
   color: var(--accent-color);
 }
 
-.geo-chip.table,
-.theme-tag {
+.geo-chip.table {
   background: var(--accent-light);
   color: var(--accent-color);
 }
@@ -414,60 +382,50 @@ const handleDownload = () => emit('download', props.data)
   color: var(--text-secondary);
 }
 
-.public-chip,
-.footer-chip {
+.neutral-chip {
+  background: rgba(15, 23, 42, 0.05);
+  color: var(--text-secondary);
+}
+
+.access-chip {
   background: rgba(47, 125, 78, 0.12);
   color: var(--success-color);
 }
 
-.data-body {
-  display: grid;
-  grid-template-columns: 116px minmax(0, 1fr) 170px;
-  gap: 1rem 1.25rem;
-  align-items: center;
-  padding-top: 1rem;
-  padding-bottom: 1rem;
-}
-
-.media-column {
-  display: flex;
-  justify-content: center;
+.access-chip.restricted {
+  background: rgba(0, 30, 64, 0.08);
+  color: var(--primary-strong);
 }
 
 .preview-image,
 .format-tile {
-  width: 96px;
-  height: 96px;
-  border-radius: 20px;
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
 }
 
 .preview-image {
   object-fit: cover;
   background: #f7f8fa;
-  border: 1px solid var(--border-light);
 }
 
 .format-tile {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(15, 23, 42, 0.03);
-  border: 1px solid transparent;
+  background: rgba(var(--primary-rgb), 0.06);
 }
 
 .format-tile.vector {
   background: rgba(47, 125, 78, 0.1);
-  border-color: rgba(47, 125, 78, 0.18);
 }
 
 .format-tile.raster {
   background: rgba(var(--accent-rgb), 0.08);
-  border-color: rgba(var(--accent-rgb), 0.16);
 }
 
 .format-tile.table {
   background: var(--accent-light);
-  border-color: rgba(var(--accent-rgb), 0.2);
 }
 
 .format-tile.archive,
@@ -475,136 +433,89 @@ const handleDownload = () => emit('download', props.data)
 .format-tile.code,
 .format-tile.generic {
   background: rgba(15, 23, 42, 0.05);
-  border-color: rgba(15, 23, 42, 0.06);
 }
 
 .format-code {
-  color: var(--text-primary);
-  font-size: 1rem;
+  color: var(--primary-strong);
+  font-size: 0.95rem;
   font-weight: 800;
-  max-width: 78px;
+  max-width: 72px;
   text-align: center;
   word-break: break-word;
 }
 
-.summary-column {
-  min-width: 0;
-}
-
 .description {
-  margin: 0;
+  margin: 0.85rem 0 0;
   color: var(--text-secondary);
-  font-size: 0.97rem;
-  line-height: 1.72;
+  font-size: 1rem;
+  line-height: 1.6;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.meta-line {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.8rem;
+.metric-row {
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.95rem;
+}
+
+.metric-item {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.tag-row {
   margin-top: 0.9rem;
 }
 
-.meta-label {
-  min-width: 56px;
-  padding-top: 0.15rem;
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.tag-chip {
+  background: rgba(180, 202, 214, 0.28);
+  color: #354a53;
+  border-radius: 999px;
+  padding: 0.42rem 0.8rem;
+  font-size: 0.62rem;
 }
 
 .action-column {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 0.85rem;
+  gap: 0.7rem;
 }
 
-.side-stat {
-  padding: 0.85rem 0.9rem;
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.03);
-  border: 1px solid var(--border-light);
-}
-
-.stat-label {
-  display: block;
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 0.35rem;
-}
-
-.side-stat strong {
-  color: var(--text-primary);
-  font-size: 0.95rem;
-}
-
-.download-btn {
-  border: 1px solid transparent;
-  border-radius: 12px;
+.primary-btn {
+  border: none;
+  border-radius: 8px;
   background: var(--accent-color);
   color: #ffffff;
-  font-size: 0.9rem;
-  font-weight: 700;
-  padding: 0.9rem 1rem;
+  font-family: 'Manrope', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 800;
+  padding: 0.92rem 1rem;
   cursor: pointer;
-  transition: background-color 0.18s ease;
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
-.download-btn:hover {
-  background: var(--accent-hover);
+.primary-btn:hover {
+  opacity: 0.92;
 }
 
-.data-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  padding-top: 0.9rem;
-  padding-bottom: 0.95rem;
-  border-top: 1px solid var(--border-light);
-  background: #fbfcfd;
-}
-
-.footer-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  min-width: 0;
-}
-
-.author-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  background: rgba(var(--accent-rgb), 0.14);
-  color: var(--accent-color);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.84rem;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.author-text,
-.footer-date {
-  color: var(--text-secondary);
-  font-size: 0.86rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.ghost-btn {
+  border: 1px solid rgba(0, 30, 64, 0.12);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--primary-strong);
+  font-family: 'Manrope', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 800;
+  padding: 0.92rem 1rem;
+  cursor: pointer;
 }
 
 @media (max-width: 980px) {
-  .data-body {
+  .data-card-shell {
     grid-template-columns: 96px minmax(0, 1fr);
   }
 
@@ -612,28 +523,12 @@ const handleDownload = () => emit('download', props.data)
     grid-column: 1 / -1;
     flex-direction: row;
     justify-content: flex-end;
-  }
-
-  .side-stat {
-    min-width: 180px;
-  }
-
-  .download-btn {
     min-width: 180px;
   }
 }
 
 @media (max-width: 720px) {
-  .data-topline,
-  .data-footer,
-  .footer-meta,
-  .action-column,
-  .meta-line {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .data-body {
+  .data-card-shell {
     grid-template-columns: 1fr;
   }
 
@@ -644,8 +539,8 @@ const handleDownload = () => emit('download', props.data)
   }
 
   .action-column,
-  .side-stat,
-  .download-btn {
+  .primary-btn,
+  .ghost-btn {
     width: 100%;
   }
 }
