@@ -62,7 +62,7 @@ const isPageActive = page => {
 
         <div class="docs-panel docs-panel--sidebar">
           <div class="docs-panel-header">
-            <strong>OpenGMS-Jupyter-Agent Docs</strong>
+            <strong>GeoCopilot Docs</strong>
             <span>Product documentation</span>
           </div>
 

@@ -45,7 +45,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_BASE_PATH: /OpenGMS-Jupyter-Agent/
+          VITE_BASE_PATH: /GeoCopilot/
 
       - name: Clean macOS metadata
         run: |

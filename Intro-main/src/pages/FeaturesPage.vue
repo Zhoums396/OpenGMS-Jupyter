@@ -14,11 +14,11 @@ import {
     <div class="page-intro centered narrow">
       <span class="eyebrow">Features</span>
       <h1>
-        OpenGMS-Jupyter-Agent
+        GeoCopilot
         <span>Features</span>
       </h1>
       <p>
-        From notebook-aware context and direct cell actions to execution recovery, these are the
+        From workspace-aware context and direct cell actions to execution recovery, these are the
         verified behaviors the AI sidebar can perform inside JupyterLab.
       </p>
 
@@ -30,7 +30,7 @@ import {
   </section>
 
   <section class="page-section">
-    <DemoVideo compact caption="Quick walkthrough of the OpenGMS-Jupyter-Agent workflow." />
+    <DemoVideo compact caption="Quick walkthrough of the GeoCopilot workflow." />
   </section>
 
   <section class="page-section section-block">
@@ -67,7 +67,7 @@ import {
       <h2>Show the working rhythm instead of a list of disconnected buzzwords</h2>
       <p>
         This sequence mirrors the real product flow: configure once, let the agent inspect the
-        notebook state, then let the tool loop write and repair.
+        workspace state, then let the tool loop write and repair.
       </p>
     </div>
 
@@ -83,7 +83,7 @@ import {
   <section class="page-section section-block">
     <p class="section-note">
       Companion-plugin features such as model browsing and parameter-to-code can still appear in
-      the product story, but they should be framed as OpenGeoLab context around the agent, not as
+      the product story, but they should be framed as GeoCopilot context around the agent, not as
       the agent itself.
     </p>
 

@@ -36,10 +36,10 @@ const selectFeature = key => {
   <section class="page-section section-block">
     <div class="section-heading centered narrow">
       <span class="eyebrow">Features and Use Cases</span>
-      <h2>See how the OpenGeoLab agent works inside JupyterLab</h2>
+      <h2>See how GeoCopilot works inside JupyterLab</h2>
       <p>
-        Short previews make the product legible fast: the agent reads notebook context, edits
-        cells, recovers from failures, and carries longer workflows forward inside the notebook.
+        Short previews make the product legible fast: the agent reads workspace context, edits
+        cells, recovers from failures, and carries longer workflows forward inside the workspace.
       </p>
     </div>
 

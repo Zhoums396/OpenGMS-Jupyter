@@ -6,13 +6,13 @@ import { docsPageUrl, faviconUrl, navPages, repoUrl } from './content/site'
 <template>
   <div class="page-shell">
     <header class="site-header">
-      <RouterLink class="brand" to="/" aria-label="OpenGeoLab OpenGMS-Jupyter-Agent">
+      <RouterLink class="brand" to="/" aria-label="OpenGeoLab GeoCopilot">
         <span class="brand-mark" aria-hidden="true">
           <img class="brand-icon" :src="faviconUrl" alt="">
         </span>
         <span class="brand-copy">
           <strong>OpenGeoLab</strong>
-          <span>OpenGMS-Jupyter-Agent</span>
+          <span>GeoCopilot</span>
         </span>
       </RouterLink>
 

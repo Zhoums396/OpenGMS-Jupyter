@@ -1,11 +1,11 @@
-# OpenGMS-Jupyter
+# GeoCopilot
 
 基于 JupyterLab 的地理模型服务集成平台，支持在线模型调用、数据管理和智能 Agent 交互。
 
 ## 项目结构
 
 ```
-OpenGMS-Jupyter/
+GeoCopilot/
 ├── GeoModelWeb/           # Web应用（前后端）
 │   ├── client/            # Vue.js 前端
 │   └── server/            # Node.js 后端服务

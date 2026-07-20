@@ -30,11 +30,11 @@ const copyInstallCommand = async () => {
       <span class="eyebrow">Download</span>
       <h1>
         Download and install
-        <span>OpenGMS-Jupyter-Agent</span>
+        <span>GeoCopilot</span>
       </h1>
       <p>
         Install the JupyterLab extension, review the source repository, and use the documented
-        setup steps to get the OpenGeoLab agent workflow running locally.
+        setup steps to get the GeoCopilot workflow running locally.
       </p>
 
       <div class="action-row centered">
@@ -68,10 +68,10 @@ const copyInstallCommand = async () => {
       <div class="install-copy">
         <div>
           <span class="card-eyebrow">Install Command</span>
-          <h3>Source install for the OpenGMS-Jupyter-Agent extension</h3>
+          <h3>Source install for the GeoCopilot extension</h3>
           <p>
             Use the source-install path to register the extension with JupyterLab and start the
-            notebook-side experience shown elsewhere on the site.
+            workspace-side experience shown elsewhere on the site.
           </p>
         </div>
 
@@ -92,7 +92,7 @@ const copyInstallCommand = async () => {
   <section class="page-section section-block">
     <div class="section-heading narrow">
       <span class="eyebrow">Repository Map</span>
-      <h2>Understand the pieces behind the notebook workflow</h2>
+      <h2>Understand the pieces behind the workspace workflow</h2>
       <p>
         The repository is split across extension, agent, and web layers. Knowing the boundaries
         helps users understand what they are installing and where each capability lives.
@@ -118,7 +118,7 @@ const copyInstallCommand = async () => {
         <h2>After installation, either inspect the feature set or watch the workflow end to end</h2>
         <p>
           Download gets the environment ready. Features explains what the agent can do, and Video
-          shows how that behavior looks inside a real notebook session.
+          shows how that behavior looks inside a real workspace session.
         </p>
       </div>
 

@@ -25,14 +25,14 @@ OGMS_API_URL=https://your-opengms-endpoint`
 export const docsPages = [
   {
     slug: '',
-    navTitle: 'About OpenGMS-Jupyter-Agent',
-    title: 'About OpenGMS-Jupyter-Agent',
+    navTitle: 'About GeoCopilot',
+    title: 'About GeoCopilot',
     description:
       'What the product includes, how the repository is organized, and why the AI sidebar should be separated from companion extension capabilities.',
     intro:
-      'OpenGMS-Jupyter-Agent is a JupyterLab-centered geospatial modeling platform that combines web services, notebook integration, and an AI agent workflow.',
+      'GeoCopilot is a JupyterLab-centered geospatial modeling platform that combines web services, notebook integration, and an AI agent workflow.',
     paragraphs: [
-      'OpenGMS-Jupyter-Agent combines a notebook-facing extension, an AI sidebar, and a supporting agent service into one Jupyter-centered workflow.',
+      'GeoCopilot combines a workspace-facing extension, an AI sidebar, and a supporting agent service into one Jupyter-centered workflow.',
       'The project scope matters because the AI sidebar, the GeoModel companion extension, the web application, and the back-end agent service are related but not identical pieces.'
     ],
     bullets: [
@@ -49,9 +49,9 @@ export const docsPages = [
     sections: [
       {
         id: 'runcell-ai',
-        title: 'OpenGMS-Jupyter-Agent',
+        title: 'GeoCopilot',
         paragraphs: [
-          'OpenGMS-Jupyter-Agent is easiest to understand when the AI agent and the companion extension are described as cooperating layers instead of one blurred feature list.',
+          'GeoCopilot is easiest to understand when the AI agent and the companion extension are described as cooperating layers instead of one blurred feature list.',
           'That boundary matters because model browsing, data-method browsing, and parameter-to-code are real product capabilities, but they are not the same thing as the agent tool loop.'
         ]
       },
@@ -123,7 +123,7 @@ jupyter labextension develop . --overwrite`
     navTitle: 'AI Agent Sidebar',
     title: 'AI Agent Sidebar',
     description:
-      'Core agent behavior, notebook-native actions, diagnostics, and why the feature page can claim direct notebook operations.',
+      'Core agent behavior, workspace-aware actions, diagnostics, and why the feature page can claim direct workspace operations.',
     intro:
       'The dedicated AI sidebar extension is intentionally documented as independent from the existing GeoModel extension, even though the overall product experience can bring them together.',
     references: [
@@ -136,7 +136,7 @@ jupyter labextension develop . --overwrite`
         title: 'Core Agent Capabilities',
         bullets: [
           'Left sidebar chat panel inside JupyterLab.',
-          'Notebook-aware context that includes current cell code and working directory.',
+          'Workspace-aware context that includes current cell code and working directory.',
           'Ask mode for direct responses and agent mode for tool-driven execution.',
           'Chat history, smart cases, and model settings in the panel.'
         ]
@@ -145,7 +145,7 @@ jupyter labextension develop . --overwrite`
         id: 'notebook-actions',
         title: 'Notebook Actions Exposed To The Front End',
         paragraphs: [
-          'The current implementation supports notebook-native actions rather than passive chat only. That is why the feature page can legitimately claim code insertion and cell editing.'
+          'The current implementation supports workspace-aware actions rather than passive chat only. That is why the feature page can legitimately claim code insertion and cell editing.'
         ],
         bullets: [
           'Add a code cell and execute it.',
@@ -253,7 +253,7 @@ jupyter labextension develop . --overwrite`
         id: 'why-this-matters-for-the-product-page',
         title: 'Why This Matters For The Product Page',
         paragraphs: [
-          'The skills architecture is the reason the product can talk about execution, recovery, and notebook operations with confidence instead of drifting into generic AI copy.'
+          'The skills architecture is the reason the product can talk about execution, recovery, and workspace operations with confidence instead of drifting into generic AI copy.'
         ]
       }
     ]
@@ -310,7 +310,7 @@ jupyter labextension develop . --overwrite`
         id: 'is-everything-an-agent-feature',
         title: 'Is everything on the site an AI agent feature?',
         paragraphs: [
-          'No. The AI sidebar has its own notebook-aware, tool-driven behavior. The OpenGeoLab extension adds companion features such as model browsing and parameter-to-code generation.'
+          'No. The AI sidebar has its own workspace-aware, tool-driven behavior. The OpenGeoLab extension adds companion features such as model browsing and parameter-to-code generation.'
         ]
       },
       {
@@ -327,7 +327,7 @@ jupyter labextension develop . --overwrite`
           'Read the setup guide in these docs.',
           'Open the Download page for the installation path.',
           'Review Features to understand agent-native behavior.',
-          'Watch the Video page to see the notebook workflow in motion.'
+          'Watch the Video page to see the workspace workflow in motion.'
         ]
       }
     ]

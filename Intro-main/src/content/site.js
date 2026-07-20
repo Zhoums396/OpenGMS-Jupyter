@@ -1,4 +1,4 @@
-export const repoUrl = 'https://github.com/Zhoums396/OpenGMS-Jupyter-Agent'
+export const repoUrl = 'https://github.com/Zhoums396/GeoCopilot'
 export const withBase = path => `${import.meta.env.BASE_URL}${String(path).replace(/^\/+/, '')}`
 export const siteHomeUrl = withBase('')
 export const docsPageUrl = withBase('docs/')
@@ -16,7 +16,7 @@ export const navPages = [
 ]
 
 export const heroTags = [
-  'Notebook-aware context',
+  'Workspace-aware context',
   'Insert and re-run cells',
   'File and terminal tools',
   'Smart cases + history'
@@ -26,8 +26,8 @@ export const spotlightItems = [
   {
     key: 'context',
     index: 'IN [1]',
-    title: 'Read notebook and workspace context',
-    description: 'Uses notebook name, current cell, working directory, project info, and workspace files.'
+    title: 'Read workspace context',
+    description: 'Uses the current notebook, active cell, working directory, project info, and workspace files.'
   },
   {
     key: 'cells',
@@ -44,7 +44,7 @@ export const spotlightItems = [
   {
     key: 'workflow',
     index: 'IN [4]',
-    title: 'Guide multi-step notebook workflows',
+    title: 'Guide multi-step workspace workflows',
     description: 'Supports agent mode, ask mode, smart cases, history, project files, and terminal tasks.'
   }
 ]
@@ -53,18 +53,18 @@ export const spotlightData = {
   context: {
     videoSrc: withBase('doc1.mp4'),
     caption: 'CTX [1]',
-    badge: 'Notebook context',
+    badge: 'Workspace context',
     label: 'What the agent reads',
     main:
-      'Notebook name, current cell code, working directory,\nproject name, workspace files, and recent outputs.',
-    sideTitle: 'ChatContext from notebook + workspace',
+      'Current notebook, active cell code, working directory,\nproject name, workspace files, and recent outputs.',
+    sideTitle: 'ChatContext from workspace state',
     sideAction: 'Plan the next step before writing code',
     outputTag: 'Grounded',
-    outputTitle: 'Notebook-aware reasoning',
+    outputTitle: 'Workspace-aware reasoning',
     outputCopy:
-      'The sidebar is not a floating chatbot. It builds replies from live notebook state and project context before deciding whether to answer directly or use tools.',
+      'The sidebar is not a floating chatbot. It builds replies from live workspace state and project context before deciding whether to answer directly or use tools.',
     points: [
-      'Notebook name + current cell',
+      'Current notebook + active cell',
       'Workspace files + project info',
       'Recent output and error state'
     ]
@@ -120,7 +120,7 @@ export const capabilityCards = [
   {
     number: '01',
     tone: 'capability-blue',
-    title: 'Chat inside JupyterLab with notebook-aware context',
+    title: 'Chat inside JupyterLab with workspace-aware context',
     body:
       'The sidebar reads notebook name, current cell code, project identity, and workspace files before deciding how to respond.'
   },
@@ -153,9 +153,9 @@ export const homeCapabilityPanels = [
     tone: 'capability-blue',
     size: 'wide',
     icon: 'AI',
-    title: 'AI-powered notebook assistant for OpenGMS-Jupyter-Agent',
+    title: 'AI-powered workspace assistant for GeoCopilot',
     body:
-      'The sidebar helps users stay inside JupyterLab while it reads notebook context, writes executable cells, runs code, and explains the next step from real notebook state.'
+      'The sidebar helps users stay inside JupyterLab while it reads workspace context, writes executable cells, runs code, and explains the next step from real workspace state.'
   },
   {
     tone: 'capability-sand',
@@ -178,9 +178,9 @@ export const homeCapabilityPanels = [
     size: 'wide',
     icon: 'OPS',
     title: 'Core capabilities',
-    subtitle: 'Everything the agent needs to support notebook work',
+    subtitle: 'Everything the agent needs to support workspace work',
     points: [
-      'Context-aware suggestions from notebook and workspace state',
+      'Context-aware suggestions from workspace state',
       'Direct code-cell and markdown-cell actions',
       'Execution feedback, debugging, and fix-forward recovery',
       'History, smart cases, files, and terminal support'
@@ -211,8 +211,8 @@ export const workflowSteps = [
 
 export const caseCards = [
   {
-    eyebrow: 'Notebook repair',
-    title: 'Fix a failing analysis cell without leaving the notebook',
+    eyebrow: 'Workspace repair',
+    title: 'Fix a failing analysis cell without leaving the workspace',
     body:
       'The agent can read the traceback, keep the failing cell index, and issue an edit-and-rerun step instead of asking the user to patch everything manually.'
   },
@@ -220,7 +220,7 @@ export const caseCards = [
     eyebrow: 'Guided coding',
     title: 'Generate the next code or markdown cell from live context',
     body:
-      'Because the sidebar sees notebook state and surrounding project information, it can propose the next executable step instead of generic sample code.'
+      'Because the sidebar sees workspace state and surrounding project information, it can propose the next executable step instead of generic sample code.'
   },
   {
     eyebrow: 'Workflow reproduction',
@@ -242,7 +242,7 @@ export const downloadCards = [
   },
   {
     eyebrow: 'Repository',
-    title: 'Browse the full OpenGMS-Jupyter-Agent repository',
+    title: 'Browse the full GeoCopilot repository',
     body:
       'Jump straight to the open-source repo if you want the code, issue tracker, and the complete relationship between GeoModelWeb, agent-service, and the extension.',
     meta: 'GitHub source of truth',
@@ -302,7 +302,7 @@ jupyter labextension develop . --overwrite`
 export const videoHighlights = [
   {
     eyebrow: 'Context',
-    title: 'Watch how the sidebar stays inside the notebook',
+    title: 'Watch how the sidebar stays inside the workspace',
     body:
       'The demo should reinforce that this is a Jupyter-native agent workflow rather than a separate portal screen.'
   },
@@ -316,12 +316,12 @@ export const videoHighlights = [
     eyebrow: 'Recovery',
     title: 'Watch how the agent reacts to errors and intermediate output',
     body:
-      'A strong demo shows the next step changing after stdout, traceback, or chart output comes back from the notebook.'
+      'A strong demo shows the next step changing after stdout, traceback, or chart output comes back from the workspace.'
   },
   {
     eyebrow: 'Outcome',
-    title: 'End on a visible notebook result',
+    title: 'End on a visible workspace result',
     body:
-      'Finish with a chart, table, map, or repaired cell so the viewer sees a real notebook outcome instead of only chat text.'
+      'Finish with a chart, table, map, or repaired cell so the viewer sees a real workspace outcome instead of only chat text.'
   }
 ]

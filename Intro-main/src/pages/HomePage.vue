@@ -14,14 +14,14 @@ import {
 <template>
   <section class="page-section hero-section">
     <div class="page-intro page-intro--hero">
-      <span class="eyebrow">OpenGMS-Jupyter-Agent</span>
+      <span class="eyebrow">GeoCopilot</span>
       <h1>
-        The notebook-aware AI agent for
-        <span>OpenGMS-Jupyter-Agent</span>
+        The workspace-aware AI agent for
+        <span>GeoCopilot</span>
       </h1>
       <p>
-        A Jupyter-native agent that reads notebook context, writes executable cells, runs code, and
-        recovers from failures without pulling the user out of the OpenGeoLab workflow.
+        A Jupyter-native agent that reads workspace context, writes executable cells, runs code, and
+        recovers from failures without pulling the user out of the GeoCopilot workflow.
       </p>
 
       <div class="action-row">
@@ -46,9 +46,9 @@ import {
   <section class="page-section section-block">
     <div class="section-heading centered narrow">
       <span class="eyebrow">Ready To Go</span>
-      <h2>Open the notebook, start the agent, and keep the work inside JupyterLab</h2>
+      <h2>Open the workspace, start the agent, and keep the work inside JupyterLab</h2>
       <p>
-        The strongest version of the product is the one that feels native to notebook work: aware
+        The strongest version of the product is the one that feels native to workspace work: aware
         of context, able to act directly on cells, and reliable enough to carry a workflow forward.
       </p>
     </div>
@@ -78,9 +78,9 @@ import {
   <section class="page-section section-block">
     <div class="section-heading narrow">
       <span class="eyebrow">Use Cases</span>
-      <h2>Move from prompt to working notebook output</h2>
+      <h2>Move from prompt to working workspace output</h2>
       <p>
-        These are the kinds of notebook sessions the agent should make easier: fixing analysis
+        These are the kinds of workspace sessions the agent should make easier: fixing analysis
         errors, writing the next cell from live context, and continuing a project without losing
         momentum.
       </p>
@@ -107,11 +107,11 @@ import {
     <div class="note-panel">
       <div>
         <span class="card-eyebrow">Scope Boundary</span>
-        <h2>Show the agent clearly, then explain where OpenGeoLab companion features fit</h2>
+        <h2>Show the agent clearly, then explain where GeoCopilot companion features fit</h2>
         <p>
-          The product is strongest when the homepage proves the notebook-native agent loop first.
-          OpenGeoLab companion capabilities can still appear elsewhere in the site, but the home
-          story should stay anchored on what the agent itself can do inside JupyterLab.
+          The product is strongest when the homepage proves the workspace-aware agent loop first.
+          GeoCopilot companion capabilities can still appear elsewhere in the site, but the home
+          story should stay anchored on what GeoCopilot itself can do inside JupyterLab.
         </p>
       </div>
 

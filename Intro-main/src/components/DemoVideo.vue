@@ -17,7 +17,7 @@ const props = defineProps({
   },
   title: {
     type: String,
-    default: 'OpenGMS-Jupyter-Agent Demo'
+    default: 'GeoCopilot Demo'
   },
   status: {
     type: String,

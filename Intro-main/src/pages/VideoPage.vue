@@ -9,11 +9,11 @@ import { videoHighlights } from '../content/site'
     <div class="page-intro centered narrow">
       <span class="eyebrow">Video</span>
       <h1>
-        See the notebook workflow
+        See the workspace workflow
         <span>in action</span>
       </h1>
       <p>
-        This walkthrough should show the agent working inside a real notebook: reading context,
+        This walkthrough should show the agent working inside a real workspace: reading context,
         writing cells, running code, reacting to output, and landing on a visible result.
       </p>
 
@@ -35,7 +35,7 @@ import { videoHighlights } from '../content/site'
       <span class="eyebrow">What To Notice</span>
       <h2>Use the walkthrough to reinforce how the agent actually behaves</h2>
       <p>
-        A strong demo focuses on notebook-native interaction, visible execution steps, and a clear
+        A strong demo focuses on workspace-aware interaction, visible execution steps, and a clear
         final outcome instead of a floating-chat presentation.
       </p>
     </div>
