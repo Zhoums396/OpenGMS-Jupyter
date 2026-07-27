@@ -1,6 +1,0 @@
-{
-  "packageManager": "python",
-  "packageName": "opengeolab-geocopilot",
-  "uninstallInstructions": "Use your Python package manager to uninstall opengeolab-geocopilot."
-}
-

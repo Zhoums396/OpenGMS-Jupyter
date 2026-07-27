@@ -1,6 +1,0 @@
-interface:
-  display_name: "OpenGMS Model Services"
-  short_description: "Find and run reusable online geographic models"
-  default_prompt: "Use $opengms-model-services to discover and inspect a suitable reusable geographic model, then invoke it only when the task and available inputs call for execution."
-policy:
-  allow_implicit_invocation: true
