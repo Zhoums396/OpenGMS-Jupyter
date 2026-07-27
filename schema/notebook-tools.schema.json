@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opengeolab.org/geocopilot/schemas/notebook-tools.schema.json",
+  "title": "GeoCopilot notebook MCP conventions",
+  "type": "object",
+  "required": ["path", "cellIdentity", "conflictCode"],
+  "properties": {
+    "path": {
+      "const": "root-relative .ipynb path; absolute, parent traversal and symlink escape rejected"
+    },
+    "cellIdentity": { "const": "nbformat cell ID" },
+    "conflictCode": { "const": "revision_conflict" },
+    "tools": {
+      "const": [
+        "notebook.list_open",
+        "notebook.read",
+        "notebook.read_cell",
+        "notebook.create",
+        "notebook.insert_cell",
+        "notebook.update_cell",
+        "notebook.delete_cell",
+        "notebook.run_cell",
+        "notebook.read_output",
+        "notebook.save"
+      ]
+    }
+  }
+}

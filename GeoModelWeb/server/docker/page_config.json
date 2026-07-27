@@ -1,6 +1,0 @@
-{
-  "disabledExtensions": {
-    "@jupyterlab/extensionmanager-extension": true
-  },
-  "terminalsAvailable": true
-}

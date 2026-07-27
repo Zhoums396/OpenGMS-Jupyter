@@ -1,78 +1,19 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
-venv/
-ENV/
-env/
-.venv/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Node.js
-node_modules/
-npm-debug.log
-yarn-error.log
-
-# OS
 .DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# Environment
-.env
-.env.local
-
-# Temporary files
-*.tmp
-*.temp
-
-# Video/Recording files
-*.screenstudio/
-*.mp4
-*.m4s
-*.m3u8
-*.yarn/
-
-# Large files
-GeoModelWeb/server/data/computeModel.json
-GeoModelWeb/server/data/*.sqlite
-GeoModelWeb/server/data/*.sqlite-*
-GeoModelWeb/server/jupyter-data/
-
-agent-service/data/conversations
-
-openclaw-mini/
-openclaw-mini
-
-6943480469346658f29fac3d2ef06b4e.mp4
-
-GeoModelWeb/UI优化
+.coverage
+.eslintcache
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.playwright-cli/
+playwright-report/
+test-results/
+__pycache__/
+*.egg-info/
+*.py[cod]
+.venv/
+build/
+dist/
+lib/
+node_modules/
+tsconfig.tsbuildinfo
+geocopilot/labextension/
