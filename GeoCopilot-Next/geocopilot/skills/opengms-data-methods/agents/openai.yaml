@@ -1,0 +1,6 @@
+interface:
+  display_name: "OpenGMS Data Methods"
+  short_description: "Browse and use live geospatial processing services"
+  default_prompt: "Use $opengms-data-methods to query the live Method Library REST catalog, explain suitable resources, and invoke one only when its exact inputs are available."
+policy:
+  allow_implicit_invocation: true

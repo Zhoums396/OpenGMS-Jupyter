@@ -1,73 +1,48 @@
 # GeoCopilot
 
-基于 JupyterLab 的地理模型服务集成平台，支持在线模型调用、数据管理和智能 Agent 交互。
+GeoCopilot 是一个面向地理空间分析的自治计算工作空间。它将智能代理带入研究者日常使用的 JupyterLab notebook，让自然语言目标、数据、代码、图表、地图和分析记录在同一处持续协作。
 
-## 项目结构
+它不是独立于研究过程的聊天窗口。GeoCopilot 会理解当前工作空间中的分析状态，执行必要的计算，观察输出与错误，并据此调整下一步工作；研究者则始终保有研究问题、方法选择与科学结论的主导权。
 
-```
-GeoCopilot/
-├── GeoModelWeb/           # Web应用（前后端）
-│   ├── client/            # Vue.js 前端
-│   └── server/            # Node.js 后端服务
-├── agent-service/         # Python Agent 服务
-├── jupyterlab-geomodel/   # JupyterLab 扩展
-```
+## 研究愿景
 
-## 主要功能
+地理空间分析往往需要在数据准备、方法选择、代码编写、模型调用、结果检查与解释之间反复切换。这些步骤既依赖专业知识，也需要大量程序性操作。
 
-- 🌍 **地理模型服务** - 集成 OpenGMS 平台的地理分析模型
-- 📊 **数据管理** - 支持地理数据的上传、下载和可视化
-- 🤖 **智能 Agent** - 基于 LLM 的智能建模助手
-- 📓 **Jupyter 集成** - 在 JupyterLab 中直接调用模型服务
+GeoCopilot 希望把这些重复而分散的操作组织成一个连续的协作过程：研究者提出目标或反馈，代理在真实的计算环境中推进分析，并将可检查的代码、图件、结果和说明回到 notebook。这样，人的注意力可以更多放在研究设计、空间假设和科学解释上。
 
-## 快速开始
+## 如何工作
 
-### 1. 启动后端服务
+GeoCopilot 以一个持续循环推进任务：
 
-```bash
-cd GeoModelWeb/server
-npm install
-npm start
-```
+1. **理解**研究者的目标，以及 notebook 中已经存在的数据、代码和结果；
+2. **执行**适合当前任务的分析操作，并调用可用的地理空间资源；
+3. **观察**计算输出、地图、表格和报错信息；
+4. **调整**后续步骤，直至形成可供研究者审阅的结果。
 
-### 2. 启动前端
+这个“推理 - 执行 - 观察”闭环让分析过程能够随着工作空间的变化持续推进，而不是只生成一次性的代码建议。
 
-```bash
-cd GeoModelWeb/client
-npm install
-npm run dev
-```
+## 人与 AI 的协作
 
-### 3. 启动 Agent 服务
+GeoCopilot 的目标不是替代研究者，而是承担程序性执行与错误修复的负担。研究者负责提出问题、判断方法是否合理、审阅结果并决定下一步方向；代理负责把目标转化为可执行的分析过程，并保留可追溯的 notebook 记录。
 
-```bash
-cd agent-service
-pip install -e .
-python run.py
-```
+## 论文中的评估
 
-### 4. 安装 JupyterLab 扩展
+论文在 90 项地理空间分析任务上评估了 GeoCopilot。结果显示：
 
-```bash
-cd jupyterlab-geomodel
-pip install -e .
-jupyter labextension develop . --overwrite
-```
+- 任务完成率为 **98.9%**；
+- 每项任务平均只需 **1.38** 轮人机交互；
+- 一次研究者请求可触发约 **25** 次内部操作与工具调用。
 
-## 环境配置
+这些结果表明，状态感知的计算工作空间可以在较少人工往返的情况下维持多步骤地理空间分析，同时保留研究者对方法与结论的判断权。
 
-复制 `.env.example` 为 `.env` 并配置相关环境变量：
+## 论文
 
-- `OPENAI_API_KEY` - OpenAI API 密钥
-- `OGMS_API_URL` - OpenGMS 平台 API 地址
+> Zhou, M., Ma, P., Xie, W., Sheng, T., Wen, Y., Yue, S., Lv, G., & Chen, M. (2026). *GeoCopilot: Accelerating Geospatial Analysis Tasks with Autonomous Computational Workspace*.
 
-## 技术栈
+## 源码
 
-- **前端**: Vue.js 3, Vite, Element Plus
-- **后端**: Node.js, Express
-- **Agent**: Python, LangChain, FastAPI
-- **JupyterLab 扩展**: TypeScript, React
+当前 JupyterLab 插件源码位于 [`GeoCopilot-Next/`](GeoCopilot-Next/)。
 
-## License
+## 许可证
 
 MIT

@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npm run build:lib:prod
+      - run: python -m pip install -e ".[test,dev]"
+      - run: ruff check geocopilot tests
+      - run: pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "jupyterlab>=4.5,<4.6"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build:prod
+
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - run: python -m pip install -e .
+      - run: npx playwright install --with-deps chromium
+      - name: Start isolated JupyterLab
+        run: |
+          mkdir -p "$RUNNER_TEMP/geocopilot-work"
+          jupyter lab \
+            --no-browser \
+            --ServerApp.root_dir="$RUNNER_TEMP/geocopilot-work" \
+            --ServerApp.port=8899 \
+            --ServerApp.port_retries=0 \
+            --IdentityProvider.token=geocopilot-ui-test \
+            --MCPExtensionApp.mcp_port=0 \
+            >"$RUNNER_TEMP/geocopilot-jupyter.log" 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent \
+              "http://127.0.0.1:8899/geocopilot/api/status?token=geocopilot-ui-test" \
+              >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/geocopilot-jupyter.log"
+          exit 1
+      - run: npm run test:ui
+        env:
+          GEOCOPILOT_UI_URL: http://127.0.0.1:8899/lab?token=geocopilot-ui-test
+      - name: Show Jupyter log on failure
+        if: failure()
+        run: cat "$RUNNER_TEMP/geocopilot-jupyter.log"
