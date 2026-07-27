@@ -1,4 +1,4 @@
-export const repoUrl = 'https://github.com/Zhoums396/GeoCopilot'
+export const repoUrl = 'https://github.com/Zhoums396/OpenGeoLab'
 export const withBase = path => `${import.meta.env.BASE_URL}${String(path).replace(/^\/+/, '')}`
 export const siteHomeUrl = withBase('')
 export const docsPageUrl = withBase('docs/')

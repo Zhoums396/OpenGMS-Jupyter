@@ -45,7 +45,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_BASE_PATH: /GeoCopilot/
+          VITE_BASE_PATH: /OpenGeoLab/
 
       - name: Clean macOS metadata
         run: |
